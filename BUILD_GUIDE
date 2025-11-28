@@ -1,0 +1,966 @@
+# EMBER v0.1 Build Guide
+
+**Assembling Your First Artificial Life Form**
+
+---
+
+## What You're Building
+
+A stationary robot that:
+- Senses light with two eyes (LDRs)
+- Gains energy from light above its genetic threshold
+- Loses energy just by existing
+- Shows its state with an RGB LED (green=thriving, red=dying, off=dead)
+- Lives or dies based on its genome and environment
+
+**This is not a toy. This is a minimal viable organism.**
+
+---
+
+## Before You Start
+
+### Required Skills
+- Basic soldering
+- Wire stripping and crimping
+- Using a multimeter
+- Flashing ESP32 via Arduino IDE
+
+### Time Required
+- First build: 3-4 hours
+- Subsequent builds: 1-2 hours
+
+### Safety Equipment
+- Safety glasses (for soldering)
+- Well-ventilated area
+- Fire-safe work surface
+
+---
+
+## Parts List
+
+### Electronics
+
+| Qty | Component | Specification | Notes |
+|-----|-----------|---------------|-------|
+| 1 | ESP32 DevKit | 30-pin version | Main brain |
+| 1 | H-Bridge Motor Driver | 4-channel digital (IN1/IN2/IN3/IN4) | Small board, not L298N |
+| 2 | TT Motor | 3-6V DC gearmotor | Yellow/blue common type |
+| 2 | LDR | GL5516 photoresistor | Light sensors |
+| 1 | Ultrasonic Sensor | HC-SR04 | Distance sensing |
+| 1 | RGB LED | 5mm common cathode | State indicator |
+| 1 | Buck Converter | 7-12V in, 5V 3A out | Voltage regulation |
+| 2 | 18650 Battery | 3.7V 2000mAh | Power source |
+| 1 | Battery Holder | 2×18650 series | Holds batteries |
+| 1 | Charging Board | TP4056 dual cell | USB charging |
+
+### Passive Components
+
+| Qty | Component | Value | Purpose |
+|-----|-----------|-------|---------|
+| 2 | Resistor | 10kΩ | LDR voltage divider |
+| 3 | Resistor | 220Ω | RGB LED current limiting |
+| 1 | Capacitor | 100µF 16V electrolytic | Power smoothing (optional) |
+
+### Hardware & Mechanical
+
+| Qty | Item | Specification |
+|-----|------|---------------|
+| 1 | Chassis | Laser-cut acrylic or 3D printed |
+| 2 | Wheels | 65mm diameter for TT motors |
+| 1 | Caster wheel | Front support |
+| 10m | Wire | 22AWG solid core, multiple colors |
+| 1 | Breadboard | Mini 170-point (for prototyping) |
+| 20 | Jumper wires | Male-to-female, various lengths |
+| 1 | USB cable | Micro-USB for ESP32 programming |
+
+### Tools Required
+
+- Soldering iron (temperature controlled, 350°C)
+- Solder (60/40 or lead-free)
+- Wire strippers
+- Needle-nose pliers
+- Multimeter
+- Hot glue gun
+- Screwdrivers (Phillips + flat)
+- Helping hands/PCB holder
+
+---
+
+## Understanding Your H-Bridge Motor Driver
+
+### NOT the L298N Module
+
+You have a **compact digital H-bridge** with 4 control pins (IN1/IN2/IN3/IN4), not the large L298N board.
+
+**Common types:**
+- L9110S dual motor driver (small blue board)
+- TB6612FNG motor driver (small purple/green board)
+- DRV8833 motor driver (tiny breakout)
+
+### Identifying Your Driver
+
+**L9110S (most common cheap version):**
+```
+Pins: B-1A, B-1B, GND, VCC, A-1A, A-1B
+- VCC: 2.5-12V (connect to 7.4V battery)
+- GND: Ground
+- A-1A/A-1B: Motor A control (both digital)
+- B-1A/B-1B: Motor B control (both digital)
+```
+
+**TB6612FNG (better quality):**
+```
+Pins: VM, VCC, GND, AO1, AO2, BO1, BO2, AIN1, AIN2, PWMA, STBY, PWMB, BIN1, BIN2
+- VM: Motor voltage (7.4V battery)
+- VCC: Logic voltage (3.3V from ESP32)
+- PWMA/PWMB: Speed control (connect to ESP32 PWM pins)
+- AIN1/AIN2: Motor A direction
+- BIN1/BIN2: Motor B direction
+- STBY: Standby (pull HIGH to enable)
+```
+
+**We'll cover both types below.**
+
+---
+
+## Pin Assignments (Revised for Digital H-Bridge)
+
+### L9110S Motor Driver Wiring
+```cpp
+// Motor control - digital direction pins
+const int MOTOR_A_IN1  = 15;   // Motor A forward
+const int MOTOR_A_IN2  = 2;    // Motor A backward
+
+const int MOTOR_B_IN1  = 16;   // Motor B forward  
+const int MOTOR_B_IN2  = 17;   // Motor B backward
+
+// Speed control via PWM on direction pins
+// (L9110S uses PWM on IN pins directly)
+```
+
+**Connection Table:**
+| ESP32 Pin | L9110S Pin | Wire Color Suggestion |
+|-----------|------------|----------------------|
+| GPIO15 | A-1A (Motor A IN1) | Orange |
+| GPIO2 | A-1B (Motor A IN2) | Yellow |
+| GPIO16 | B-1A (Motor B IN1) | Green |
+| GPIO17 | B-1B (Motor B IN2) | Blue |
+| 7.4V Battery+ | VCC | Red (thick wire) |
+| GND | GND | Black (thick wire) |
+
+### TB6612FNG Motor Driver Wiring
+```cpp
+// Motor control - separate direction and speed
+const int MOTOR_A_IN1  = 15;   // Motor A direction bit 1
+const int MOTOR_A_IN2  = 2;    // Motor A direction bit 2
+const int MOTOR_A_PWM  = 5;    // Motor A speed control
+
+const int MOTOR_B_IN1  = 16;   // Motor B direction bit 1
+const int MOTOR_B_IN2  = 17;   // Motor B direction bit 2
+const int MOTOR_B_PWM  = 4;    // Motor B speed control
+
+const int MOTOR_STBY   = 13;   // Standby control (HIGH = enabled)
+```
+
+**Connection Table:**
+| ESP32 Pin | TB6612 Pin | Wire Color |
+|-----------|-----------|------------|
+| GPIO15 | AIN1 | Orange |
+| GPIO2 | AIN2 | Yellow |
+| GPIO5 | PWMA | Red |
+| GPIO16 | BIN1 | Green |
+| GPIO17 | BIN2 | Blue |
+| GPIO4 | PWMB | Purple |
+| GPIO13 | STBY | White |
+| 3.3V | VCC | Red (thin) |
+| 7.4V Battery+ | VM | Red (thick) |
+| GND | GND | Black |
+
+### Other Components (Same for Both)
+```cpp
+// Light sensors
+const int LDR_LEFT_PIN  = 34;   // Left eye
+const int LDR_RIGHT_PIN = 35;   // Right eye
+
+// RGB LED
+const int LED_RED   = 23;
+const int LED_GREEN = 22;
+const int LED_BLUE  = 21;
+
+// Ultrasonic sensor (future use)
+const int US_TRIGGER = 25;
+const int US_ECHO    = 26;
+```
+
+---
+
+## Step-by-Step Assembly
+
+### Step 1: Prepare the Chassis
+
+**If using laser-cut acrylic:**
+1. Remove protective film from all pieces
+2. Test-fit all components before gluing
+3. Mark mounting holes with pencil
+
+**If using 3D printed:**
+1. Clean up support material
+2. Test-fit threaded inserts if using
+3. Sand any rough edges
+
+**Component layout:**
+```
+        [Front]
+          ___
+         |US |  ← Ultrasonic
+         |___|
+
+   ●           ●   ← LDRs at front corners
+   
+┌─────────────────────┐
+│    [ESP32]          │
+│                     │
+│  [Buck]  [H-Brdg]   │
+│                     │
+│ [Batt][Batt]        │
+│       ⚫             │ ← RGB LED (top, visible)
+└─────────────────────┘
+
+   ◐           ◐   ← Motors/wheels
+```
+
+### Step 2: Mount the Motors
+
+1. **Attach motors to chassis:**
+   - Use M3 screws (usually included with motors)
+   - Ensure motor shafts point outward
+   - Motors should be parallel and level
+
+2. **Attach wheels:**
+   - Press wheels onto motor shafts
+   - Ensure tight fit (add tape if loose)
+   - Wheels should not rub chassis
+
+3. **Add caster wheel:**
+   - Mount at front center
+   - Adjust height so chassis is level
+   - Should rotate freely
+
+### Step 3: Install Power System
+
+**CRITICAL: Test before connecting ESP32**
+
+1. **Mount battery holder:**
+   - Secure to chassis bottom with hot glue or screws
+   - Ensure batteries won't shift during movement
+   - Leave access for battery replacement
+
+2. **Wire batteries in series:**
+```
+   Battery 1: [+] ─────┬────→ TO LOADS (+7.4V)
+              [-] ──┐  │
+                    │  │
+   Battery 2: [+] ──┘  │
+              [-] ─────┴────→ TO LOADS (GND)
+```
+   
+3. **Add power switch (recommended):**
+   - Cut positive wire from battery
+   - Install toggle switch inline
+   - Use heat shrink to insulate
+
+4. **Connect buck converter:**
+```
+   Buck Converter:
+   IN+  ← Battery positive (7.4V)
+   IN-  ← Battery negative (GND)
+   OUT+ → ESP32 VIN (5V regulated)
+   OUT- → ESP32 GND
+```
+
+5. **Adjust buck converter output:**
+   - **DO THIS BEFORE CONNECTING ESP32**
+   - Connect multimeter to OUT+ and OUT-
+   - Turn adjustment screw until multimeter reads 5.0V
+   - Verify multiple times (incorrect voltage will damage ESP32)
+
+6. **Test power system:**
+```
+   ✓ Measure battery voltage: should be 7.4-8.4V
+   ✓ Measure buck output: should be 5.0V ±0.1V
+   ✓ Connect LED to buck output: should light dimly
+```
+
+### Step 4: Mount ESP32
+
+1. **Create a secure mount:**
+   - Use standoffs or hot glue
+   - USB port must be accessible
+   - Leave space above for heat dissipation
+
+2. **Connect power:**
+```
+   Buck OUT+ → ESP32 VIN pin
+   Buck OUT- → ESP32 GND pin
+```
+
+3. **Test ESP32:**
+   - Plug in USB cable (while battery connected is fine)
+   - Onboard LED should light
+   - ESP32 should be warm, not hot
+
+### Step 5: Wire the Light Sensors (LDRs)
+
+**Each LDR needs a voltage divider circuit:**
+```
+3.3V ──┬─── [LDR] ───┬─── [10kΩ] ─── GND
+       │             │
+     (exposed)    TO ESP32
+                 (GPIO 34/35)
+```
+
+**Left LDR:**
+1. Solder 10kΩ resistor to one LDR leg
+2. Solder wire from junction to ESP32 GPIO34
+3. Solder wire from free LDR leg to ESP32 3.3V
+4. Solder wire from free resistor leg to ESP32 GND
+
+**Right LDR:**
+1. Repeat process for GPIO35
+
+**Mounting LDRs:**
+- Hot glue to front corners of chassis
+- Face forward/outward at ~45° angle
+- Ensure nothing blocks light path
+- Keep legs short to reduce noise
+
+**Testing:**
+```cpp
+// Upload this test sketch:
+void setup() {
+  Serial.begin(115200);
+  pinMode(34, INPUT);
+  pinMode(35, INPUT);
+}
+
+void loop() {
+  Serial.print("Left: ");
+  Serial.print(analogRead(34));
+  Serial.print(" Right: ");
+  Serial.println(analogRead(35));
+  delay(500);
+}
+
+// Cover each LDR - values should drop
+// Shine light - values should rise
+// Values should be: 0-4095
+```
+
+### Step 6: Wire the RGB LED
+
+**Circuit for common cathode LED:**
+```
+GPIO23 ──[220Ω]── LED RED ──┐
+GPIO22 ──[220Ω]── LED GRN ──┼── GND
+GPIO21 ──[220Ω]── LED BLU ──┘
+```
+
+**Assembly:**
+1. **Identify LED pins:**
+```
+   Looking at LED (flat side = cathode side):
+   
+   Longest pin = Common cathode (to GND)
+   
+   [R] [G] [-] [B]   ← Typical pinout
+    │   │   │   │
+```
+
+2. **Solder resistors:**
+   - Cut resistor legs to ~5mm
+   - Solder 220Ω to each color pin (not cathode)
+   - Leave cathode leg bare
+
+3. **Solder wires:**
+   - Red wire to RED resistor → GPIO23
+   - Green wire to GREEN resistor → GPIO22
+   - Blue wire to BLUE resistor → GPIO21
+   - Black wire to cathode → GND
+
+4. **Mount LED:**
+   - Drill 5mm hole in top of chassis
+   - Push LED through (resistors should be below)
+   - Secure with hot glue from underneath
+   - LED should be visible from all angles
+
+**Testing:**
+```cpp
+void setup() {
+  pinMode(23, OUTPUT);
+  pinMode(22, OUTPUT);
+  pinMode(21, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(23, HIGH); delay(1000); // Red
+  digitalWrite(23, LOW);
+  digitalWrite(22, HIGH); delay(1000); // Green
+  digitalWrite(22, LOW);
+  digitalWrite(21, HIGH); delay(1000); // Blue
+  digitalWrite(21, LOW);
+}
+```
+
+### Step 7: Wire the Motor Driver
+
+#### For L9110S Driver:
+
+1. **Power connections:**
+```
+   Battery 7.4V → VCC
+   GND → GND (shared with ESP32 GND)
+```
+
+2. **Control connections:**
+```
+   ESP32 GPIO15 → A-1A (Motor A)
+   ESP32 GPIO2  → A-1B (Motor A)
+   ESP32 GPIO16 → B-1A (Motor B)
+   ESP32 GPIO17 → B-1B (Motor B)
+```
+
+3. **Motor connections:**
+```
+   Left Motor:  Connect to Motor A output
+   Right Motor: Connect to Motor B output
+```
+   **Note:** Polarity determines direction. If motor spins wrong way, swap wires.
+
+4. **Code for L9110S:**
+```cpp
+   // Motor control - PWM on IN pins directly
+   void setMotorSpeed(int motorA, int motorB) {
+     // motorA/B: -255 to +255
+     
+     // Motor A
+     if (motorA >= 0) {
+       analogWrite(15, motorA);  // Forward
+       analogWrite(2, 0);        // Backward off
+     } else {
+       analogWrite(15, 0);
+       analogWrite(2, -motorA);  // Backward
+     }
+     
+     // Motor B
+     if (motorB >= 0) {
+       analogWrite(16, motorB);
+       analogWrite(17, 0);
+     } else {
+       analogWrite(16, 0);
+       analogWrite(17, -motorB);
+     }
+   }
+   
+   // Disable motors (v0.1)
+   void disableMotors() {
+     analogWrite(15, 0);
+     analogWrite(2, 0);
+     analogWrite(16, 0);
+     analogWrite(17, 0);
+   }
+```
+
+#### For TB6612FNG Driver:
+
+1. **Power connections:**
+```
+   Battery 7.4V → VM
+   ESP32 3.3V → VCC
+   GND → GND (shared)
+```
+
+2. **Control connections:**
+```
+   ESP32 GPIO15 → AIN1
+   ESP32 GPIO2  → AIN2
+   ESP32 GPIO5  → PWMA
+   ESP32 GPIO16 → BIN1
+   ESP32 GPIO17 → BIN2
+   ESP32 GPIO4  → PWMB
+   ESP32 GPIO13 → STBY (or tie to VCC)
+```
+
+3. **Motor connections:**
+```
+   Left Motor:  AO1, AO2
+   Right Motor: BO1, BO2
+```
+
+4. **Code for TB6612FNG:**
+```cpp
+   void setMotorSpeed(int motorA, int motorB) {
+     // Enable driver
+     digitalWrite(13, HIGH);
+     
+     // Motor A
+     if (motorA >= 0) {
+       digitalWrite(15, HIGH);
+       digitalWrite(2, LOW);
+       analogWrite(5, motorA);
+     } else {
+       digitalWrite(15, LOW);
+       digitalWrite(2, HIGH);
+       analogWrite(5, -motorA);
+     }
+     
+     // Motor B
+     if (motorB >= 0) {
+       digitalWrite(16, HIGH);
+       digitalWrite(17, LOW);
+       analogWrite(4, motorB);
+     } else {
+       digitalWrite(16, LOW);
+       digitalWrite(17, HIGH);
+       analogWrite(4, -motorB);
+     }
+   }
+   
+   // Disable motors (v0.1)
+   void disableMotors() {
+     digitalWrite(13, LOW);  // Standby mode
+   }
+```
+
+### Step 8: Wire the Ultrasonic Sensor
+
+**HC-SR04 connections:**
+```
+VCC  → 5V (from buck converter OUT+)
+TRIG → ESP32 GPIO25
+ECHO → ESP32 GPIO26
+GND  → GND
+```
+
+**Mounting:**
+- Hot glue to front center of chassis
+- Face forward, level with ground
+- Nothing blocking the "eyes" (transmitter/receiver)
+
+**Not used in v0.1, but wire it for future versions.**
+
+### Step 9: Final Assembly
+
+1. **Cable management:**
+   - Bundle wires with zip ties
+   - Keep power wires separate from signal wires
+   - Ensure nothing touches motor shafts
+   - Leave slack for vibration
+
+2. **Secure all components:**
+   - Hot glue any loose boards
+   - Ensure ESP32 can't short against metal
+   - Batteries should not move
+
+3. **Label your bot:**
+   - Write bot_id (0-8) on chassis with marker
+   - This is critical for evolution experiments
+
+4. **Final inspection:**
+```
+   ✓ No exposed wire touching chassis
+   ✓ All components secure
+   ✓ Battery polarity correct
+   ✓ Motors can't touch circuit boards
+   ✓ USB port accessible
+   ✓ Power switch accessible
+   ✓ LED visible from top
+   ✓ LDRs unobstructed
+```
+
+---
+
+## Programming the ESP32
+
+### Step 1: Install Arduino IDE
+
+1. Download from arduino.cc
+2. Install ESP32 board support:
+   - File → Preferences
+   - Additional Boards Manager URLs: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+   - Tools → Board → Boards Manager
+   - Search "ESP32" and install
+
+### Step 2: Configure for ESP32
+```
+Tools → Board → ESP32 Dev Module
+Tools → Upload Speed → 115200
+Tools → Port → (select your ESP32 port)
+```
+
+### Step 3: Upload the Code
+
+1. Open `ember_v0.1_light.ino`
+2. **IMPORTANT:** Change `bot_id` in code:
+```cpp
+   Genome genome = {
+       .light_threshold = 0.5,
+       .efficiency = 1.0,
+       .bot_id = 0,  // ← CHANGE THIS (0-8)
+       .generation = 0
+   };
+```
+3. Click Upload (arrow button)
+4. Wait for "Done uploading"
+
+### Step 4: Test Via Serial Monitor
+
+1. Tools → Serial Monitor
+2. Set baud rate to 115200
+3. You should see:
+```
+   ╔═══════════════════════════════════════╗
+   ║     WHEELIE v0.1 - LIFE FROM LIGHT    ║
+   ║                                       ║
+   ║  Simple rule: Light = Energy = Life  ║
+   ║                                       ║
+   ║  Watch what emerges...                ║
+   ╚═══════════════════════════════════════╝
+   
+   =================================
+   Bot ID: 0
+   Generation: 0
+   Light Threshold: 0.347
+   Efficiency: 1.123
+   =================================
+   
+   Light: 0.512 | Energy: 73.2 | Alive: 5s | Status: ALIVE
+```
+
+---
+
+## First Power-On Checklist
+
+**BEFORE connecting battery:**
+```
+□ All solder joints inspected (no bridges)
+□ No exposed wires touching
+□ Buck converter set to 5.0V
+□ Multimeter tested all connections
+□ Code uploaded successfully
+□ Bot_id is unique for this bot
+```
+
+**Power-on sequence:**
+1. Turn on power switch
+2. LED should flash white 3 times (boot sequence)
+3. LED should turn green or red depending on light
+4. Open Serial Monitor
+5. Verify stats printing every second
+
+**If LED doesn't light:**
+- Check buck converter 5V output
+- Check ESP32 GND connection
+- Check LED wiring and polarity
+
+**If code doesn't upload:**
+- Press and hold BOOT button during upload
+- Try different USB cable
+- Check drivers installed
+
+---
+
+## Calibration Procedure
+
+### Step 1: Dark Calibration
+
+1. Place bot in completely dark box
+2. Open Serial Monitor
+3. Note light level reading (should be <0.05)
+4. If too high, check LDR circuit wiring
+
+### Step 2: Bright Calibration
+
+1. Shine flashlight directly at LDRs
+2. Note light level reading (should be >0.95)
+3. If too low, check LDR isn't damaged
+4. If readings too different between left/right, adjust resistor values
+
+### Step 3: Survival Test
+
+1. Place bot in normal room light
+2. Watch for 5 minutes
+3. Energy should stay relatively stable (±10%)
+4. If dying: threshold too high, send command `threshold 0.3`
+5. If capped at 100: threshold too low (this is fine)
+
+### Step 4: Motor Test (Do This Even Though Disabled)
+
+**IMPORTANT: Test motors work before evolution experiments begin**
+
+1. Upload motor test code:
+```cpp
+   void setup() {
+     // Your motor pin setup here
+     disableMotors();  // Ensure off at start
+   }
+   
+   void loop() {
+     // Enable and test one motor at a time
+     setMotorSpeed(100, 0);   // Left forward
+     delay(1000);
+     setMotorSpeed(0, 100);   // Right forward
+     delay(1000);
+     setMotorSpeed(-100, 0);  // Left backward
+     delay(1000);
+     setMotorSpeed(0, -100);  // Right backward
+     delay(1000);
+     disableMotors();
+     delay(2000);
+   }
+```
+
+2. Each motor should:
+   - Spin forward smoothly
+   - Spin backward smoothly
+   - Stop completely when disabled
+
+3. If motor spins wrong direction, swap motor wires
+
+4. After testing, re-upload EMBER v0.1 code (motors disabled)
+
+---
+
+## Troubleshooting
+
+### LED Behavior Issues
+
+**Problem:** LED stuck on one color
+
+**Cause:** One GPIO pin not connected or LED pin wrong
+
+**Fix:**
+1. Test each color individually via Serial: `test red`, `test green`, `test blue`
+2. Check wiring with multimeter (should see 3.3V on GPIO when HIGH)
+3. Verify LED pinout (flat side = cathode)
+
+---
+
+**Problem:** LED very dim
+
+**Cause:** Wrong resistor value or current limited by ESP32
+
+**Fix:**
+1. Measure resistor (should be 220Ω, not 220kΩ)
+2. Try lower resistor (150Ω) if still dim
+3. Check battery voltage (should be >7V)
+
+---
+
+### Light Sensor Issues
+
+**Problem:** Light reading always 0.0
+
+**Cause:** LDR circuit incorrect or LDR damaged
+
+**Fix:**
+1. Measure resistance of LDR in dark (should be >100kΩ)
+2. Measure resistance in bright light (should be <10kΩ)
+3. Check voltage divider: should see 0-3.3V at GPIO pin
+4. Verify 10kΩ resistor to GND, not to VCC
+
+---
+
+**Problem:** Light readings different left vs right
+
+**Cause:** Different LDRs or mounting position
+
+**Fix:**
+1. This is normal! LDRs vary by ±20%
+2. If >50% different, swap 10kΩ resistors (11kΩ on one side compensates)
+3. Can also adjust in code:
+```cpp
+   float left = analogRead(34) / 4095.0;
+   float right = analogRead(35) / 4095.0 * 1.2; // 20% compensation
+```
+
+---
+
+### Power Issues
+
+**Problem:** Bot resets randomly
+
+**Cause:** Battery voltage too low or loose connection
+
+**Fix:**
+1. Measure battery voltage under load (should be >6.5V)
+2. Charge batteries fully
+3. Check all GND connections (ESP32, buck, motor driver all share GND)
+4. Add 100µF capacitor across buck converter output
+
+---
+
+**Problem:** Buck converter gets hot
+
+**Cause:** Normal (small efficiency loss) or short circuit
+
+**Fix:**
+1. If too hot to touch: disconnect immediately, check for shorts
+2. If warm: normal for 7.4V→5V conversion at 500mA
+3. Ensure adequate airflow around converter
+
+---
+
+### Motor Issues (For When You Enable Them)
+
+**Problem:** Motors don't spin
+
+**Cause:** Driver disabled, wrong pins, or insufficient power
+
+**Fix:**
+1. Check STBY pin HIGH (TB6612FNG only)
+2. Verify 7.4V at motor driver VM/VCC pin
+3. Test motor directly with battery (should spin)
+4. Check all 4 control pins connected
+
+---
+
+**Problem:** One motor spins, other doesn't
+
+**Cause:** Wiring issue or damaged motor
+
+**Fix:**
+1. Swap motors at driver (if problem follows motor, motor is bad)
+2. Check continuity of wires
+3. Verify both EN pins receiving PWM signal
+
+---
+
+**Problem:** Motors jitter or stall
+
+**Cause:** Insufficient current or PWM frequency issue
+
+**Fix:**
+1. Check battery voltage (should be >7V under load)
+2. Try lower speed (PWM value 100 instead of 255)
+3. Adjust PWM frequency:
+```cpp
+   ledcSetup(0, 1000, 8);  // Try 1kHz instead of 5kHz
+```
+
+---
+
+## Building Multiple Bots
+
+### Batch Production Tips
+
+**Build 3 at a time:**
+1. Do all mechanical assembly first (chassis, motors, wheels)
+2. Do all power wiring second (batteries, buck, charging)
+3. Do all sensor wiring third (LDRs, LED)
+4. Do all motor wiring last (easiest to troubleshoot)
+5. Program all at once (change bot_id for each)
+
+**Quality control:**
+- Test each bot individually before marking complete
+- Label each bot clearly with bot_id
+- Keep spares of most-failed components (usually LDRs or motor drivers)
+
+**Recommended build order:**
+1. Bot 0, 1, 2 - first batch, expect issues
+2. Bot 3, 4, 5 - second batch, faster
+3. Bot 6, 7, 8 - third batch, fastest
+
+**Total time for 9 bots:** 15-20 hours (spread over several days)
+
+---
+
+## What Success Looks Like
+
+### After First Power-On
+
+**You should see:**
+1. White LED flash 3 times (boot)
+2. LED turns green or red based on light
+3. Serial output every second with stats
+4. Energy rising in light, falling in dark
+5. Bot "dies" (LED off) if left in darkness for ~16 minutes
+
+### After Calibration
+
+**In bright light:**
+- LED solid green
+- Energy near 100
+- Light reading >0.6
+
+**In room light:**
+- LED green or slow red flash
+- Energy 40-80 (stable or slowly changing)
+- Light reading 0.3-0.6
+
+**In darkness:**
+- LED fast red flash
+- Energy dropping steadily
+- Light reading <0.1
+- Death after ~1000 seconds
+
+### Ready for Evolution
+
+**All 9 bots should:**
+- Boot successfully
+- Read light independently
+- Show different genomes (randomized)
+- Survive or die based on genome + environment
+- Respond to serial commands (mutate, reset, etc.)
+
+**If all 9 meet these criteria, you're ready for evolution experiments.**
+
+---
+
+## Next Steps
+
+1. **Read the EVOLUTION_GUIDE** - learn how to run selection experiments
+2. **Build your arena** - controlled environment for fitness testing
+3. **Start with simple tests** - bright vs dim vs dark
+4. **Log your results** - track which genomes survive
+5. **Run evolution** - copy successful genes, mutate, repeat
+
+**You've built artificial life. Now watch it evolve.**
+
+---
+
+## Common Mistakes to Avoid
+
+❌ **Don't skip the buck converter voltage adjustment** - will damage ESP32  
+❌ **Don't mount LDRs facing up** - chassis shadow affects readings  
+❌ **Don't forget to set unique bot_id** - ruins evolution experiments  
+❌ **Don't power motors from buck converter** - needs too much current  
+❌ **Don't leave battery charging unattended** - fire risk  
+❌ **Don't cross signal and power wires** - causes noise in sensors  
+❌ **Don't over-tighten screws on acrylic** - will crack  
+❌ **Don't forget to disable motors in v0.1 code** - wastes power  
+
+---
+
+## Support and Resources
+
+### If You Get Stuck
+
+1. Check the troubleshooting section above
+2. Verify against the pin assignments
+3. Test each subsystem individually (power, sensors, LED, motors)
+4. Compare to a working bot if you have one
+
+### Component Datasheets
+
+- ESP32: espressif.com
+- L9110S: datasheet available on GitHub
+- TB6612FNG: sparkfun.com/products/14450
+- GL5516: common LDR datasheet
+- HC-SR04: multiple sources online
+
+---
+
+*EMBER v0.1 Build Guide*  
+*For digital H-bridge motor drivers*  
+*Part of the Forge Theory Project*  
+*MIT License*
