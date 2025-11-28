@@ -28,8 +28,6 @@ This version adds powerful new features while keeping the core life pattern unch
 - **📊 JSON API** - Automate swarm monitoring and data logging
 - **🏗️ Hardware Abstraction** - Clean HAL for easy hardware swaps
 
-**WiFi is optional** - bots work fine offline. Network features enhance but don't replace core functionality.
-
 ---
 
 ## What Is This?
@@ -52,12 +50,14 @@ Watch it live. Watch it die. Watch evolution happen in real-time.
 
 ### If You Just Want to See It Work
 
-1. **Configure WiFi** (optional but recommended):
+1. **Configure WiFi & Bot ID** in `ember_v0.1_hal_ota.ino`:
 
 ```cpp
-   const char* WIFI_SSID = "YourNetwork";
-   const char* WIFI_PASSWORD = "YourPassword";
-   const char* OTA_HOSTNAME = "ember-bot-0";  // Unique per bot
+   const char* WIFI_SSID = "YourNetwork";      // Your WiFi network name
+   const char* WIFI_PASSWORD = "YourPassword";   // Your WiFi password
+   const char* OTA_HOSTNAME = "ember-bot-0";   // UNIQUE for each bot!
+   // ...
+   genome.bot_id = 0; // UNIQUE for each bot!
 ```
 
 2. **Flash the code** to ESP32 (change `bot_id` to unique number 0-8)
@@ -163,16 +163,16 @@ Access your bot's dashboard via browser at: `http://ember-bot-N.local/`
 
 ### WiFi Configuration
 
-**Edit at top of code before first upload:**
+**Edit at top of `ember_v0.1_hal_ota.ino` before first upload:**
 
 ```cpp
-const char* WIFI_SSID = "YourNetworkName";
-const char* WIFI_PASSWORD = "YourPassword";
-const char* OTA_HOSTNAME = "ember-bot-0";  // Unique for each bot (0-8)
-const char* OTA_PASSWORD = "ember2025";     // OTA update security
+const char* WIFI_SSID = "YourNetworkName";   // Your WiFi network name
+const char* WIFI_PASSWORD = "YourPassword";    // Your WiFi password
+const char* OTA_HOSTNAME = "ember-bot-0";   // Unique for each bot (0-8)
+const char* OTA_PASSWORD = "ember2025";      // OTA update security
 ```
 
-**Auto-reconnect:** Bot checks connection every 30 seconds and attempts to reconnect if dropped. Life continues normally even if WiFi is down.
+**Auto-reconnect:** The bot checks its connection every 30 seconds and attempts to reconnect if dropped. Life continues normally even if WiFi is down.
 
 ### JSON API
 

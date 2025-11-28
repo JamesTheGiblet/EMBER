@@ -2,7 +2,7 @@
 
 **Assembling Your First Artificial Life Form**
 
----
+-----
 
 ## What You're Building
 
@@ -13,11 +13,11 @@ A stationary robot that:
 - Loses energy just by existing
 - Shows its state with an RGB LED (green=thriving, red=dying, off=dead)
 - Lives or dies based on its genome and environment
-- **Connects to WiFi** for web dashboard and OTA updates (optional)
+- **Connects to WiFi** for a web dashboard, JSON API, and OTA updates
 
 **This is not a toy. This is a minimal viable organism.**
 
----
+-----
 
 ## Before You Start
 
@@ -27,7 +27,7 @@ A stationary robot that:
 - Wire stripping and crimping
 - Using a multimeter
 - Flashing ESP32 via Arduino IDE
-- Basic WiFi network knowledge (optional)
+- Basic WiFi network knowledge
 
 ### Time Required
 
@@ -41,7 +41,7 @@ A stationary robot that:
 - Well-ventilated area
 - Fire-safe work surface
 
----
+-----
 
 ## Parts List
 
@@ -91,7 +91,7 @@ A stationary robot that:
 - Screwdrivers (Phillips + flat)
 - Helping hands/PCB holder
 
----
+-----
 
 ## Understanding Your H-Bridge Motor Driver
 
@@ -131,23 +131,13 @@ Pins: VM, VCC, GND, AO1, AO2, BO1, BO2, AIN1, AIN2, PWMA, STBY, PWMB, BIN1, BIN2
 
 **We'll cover both types below.**
 
----
+-----
 
-## Pin Assignments (Revised for Digital H-Bridge)
+## Pin Assignments
+
+This section provides the practical wiring connections for the components. For the definitive pinout map and logical pin definitions within the code, please refer to the **`EMBER_v0.1_SPEC.md`** document.
 
 ### L9110S Motor Driver Wiring
-
-```cpp
-// Motor control - digital direction pins
-const int MOTOR_A_IN1  = 15;   // Motor A forward
-const int MOTOR_A_IN2  = 2;    // Motor A backward
-
-const int MOTOR_B_IN1  = 16;   // Motor B forward  
-const int MOTOR_B_IN2  = 17;   // Motor B backward
-
-// Speed control via PWM on direction pins
-// (L9110S uses PWM on IN pins directly)
-```
 
 **Connection Table:**
 
@@ -161,19 +151,6 @@ const int MOTOR_B_IN2  = 17;   // Motor B backward
 | GND | GND | Black (thick wire) |
 
 ### TB6612FNG Motor Driver Wiring
-
-```cpp
-// Motor control - separate direction and speed
-const int MOTOR_A_IN1  = 15;   // Motor A direction bit 1
-const int MOTOR_A_IN2  = 2;    // Motor A direction bit 2
-const int MOTOR_A_PWM  = 5;    // Motor A speed control
-
-const int MOTOR_B_IN1  = 16;   // Motor B direction bit 1
-const int MOTOR_B_IN2  = 17;   // Motor B direction bit 2
-const int MOTOR_B_PWM  = 4;    // Motor B speed control
-
-const int MOTOR_STBY   = 13;   // Standby control (HIGH = enabled)
-```
 
 **Connection Table:**
 
@@ -192,22 +169,7 @@ const int MOTOR_STBY   = 13;   // Standby control (HIGH = enabled)
 
 ### Other Components (Same for Both)
 
-```cpp
-// Light sensors
-const int LDR_LEFT_PIN  = 34;   // Left eye
-const int LDR_RIGHT_PIN = 35;   // Right eye
-
-// RGB LED
-const int LED_RED   = 23;
-const int LED_GREEN = 22;
-const int LED_BLUE  = 21;
-
-// Ultrasonic sensor (future use)
-const int US_TRIGGER = 25;
-const int US_ECHO    = 26;
-```
-
----
+-----
 
 ## Step-by-Step Assembly
 
@@ -228,118 +190,128 @@ const int US_ECHO    = 26;
 **Component layout:**
 
 ```
-        [Front]
-          ___
-         |US |  ← Ultrasonic
-         |___|
+        [Front]
+          ___
+         |US |  ← Ultrasonic
+         |___|
 
-   ●           ●   ← LDRs at front corners
-   
+   ●           ●   ← LDRs at front corners
+   
 ┌─────────────────────┐
-│    [ESP32]          │
-│                     │
-│  [Buck]  [H-Brdg]   │
-│                     │
-│ [Batt][Batt]        │
-│       ⚫             │ ← RGB LED (top, visible)
+│    [ESP32]          │
+│                     │
+│  [Buck]  [H-Brdg]   │
+│                     │
+│ [Batt][Batt]        │
+│       ⚫             │ ← RGB LED (top, visible)
 └─────────────────────┘
 
-   ◐           ◐   ← Motors/wheels
+   ◐           ◐   ← Motors/wheels
 ```
 
 ### Step 2: Mount the Motors
 
 1. **Attach motors to chassis:**
-   - Use M3 screws (usually included with motors)
-   - Ensure motor shafts point outward
-   - Motors should be parallel and level
+       - Use M3 screws (usually included with motors)
+       - Ensure motor shafts point outward
+       - Motors should be parallel and level
 
 2. **Attach wheels:**
-   - Press wheels onto motor shafts
-   - Ensure tight fit (add tape if loose)
-   - Wheels should not rub chassis
+       - Press wheels onto motor shafts
+       - Ensure tight fit (add tape if loose)
+       - Wheels should not rub chassis
 
 3. **Add caster wheel:**
-   - Mount at front center
-   - Adjust height so chassis is level
-   - Should rotate freely
+       - Mount at front center
+       - Adjust height so chassis is level
+       - Should rotate freely
 
 ### Step 3: Install Power System
 
 **CRITICAL: Test before connecting ESP32**
 
 1. **Mount batteries:**
-   - Secure the two LiPo batteries to the chassis bottom with a velcro strap or double-sided tape.
-   - Ensure batteries won't shift during movement.
-   - Place them where they won't interfere with wheels or wiring.
+       - Secure the two LiPo batteries to the chassis bottom with a velcro strap or double-sided tape.
+       - Ensure batteries won't shift during movement.
+       - Place them where they won't interfere with wheels or wiring.
 
 2. **Wire batteries in series:**
 
+[Image of two 18650 batteries wired in series diagram]
+
 ```
-   Battery 1: [+] ─────┬────→ TO LOADS (+7.4V)
-              [-] ──┐  │
-                    │  │
-   Battery 2: [+] ──┘  │
-              [-] ─────┴────→ TO LOADS (GND)
+   Battery 1: [+] ─────┬────→ TO LOADS (+7.4V)
+              [-] ──┐  │
+                    │  │
+   Battery 2: [+] ──┘  │
+              [-] ─────┴────→ TO LOADS (GND)
 ```
 
 3. **Add power switch (recommended):**
-   - Cut positive wire from battery
-   - Install toggle switch inline
-   - Use heat shrink to insulate
+       - Cut positive wire from battery
+       - Install toggle switch inline
+       - Use heat shrink to insulate
 
 4. **Connect buck converter:**
 
+[Image of LM2596 buck converter wiring diagram]
+
 ```
-   Buck Converter:
-   IN+  ← Battery positive (7.4V)
-   IN-  ← Battery negative (GND)
-   OUT+ → ESP32 VIN (5V regulated)
-   OUT- → ESP32 GND
+   Buck Converter:
+   IN+  ← Battery positive (7.4V)
+   IN-  ← Battery negative (GND)
+   OUT+ → ESP32 VIN (5V regulated)
+   OUT- → ESP32 GND
 ```
 
 5. **Adjust buck converter output:**
-   - **DO THIS BEFORE CONNECTING ESP32**
-   - Connect multimeter to OUT+ and OUT-
-   - Turn adjustment screw until multimeter reads 5.0V
-   - Verify multiple times (incorrect voltage will damage ESP32)
+       - **DO THIS BEFORE CONNECTING ESP32**
+       - Connect multimeter to OUT+ and OUT-
+       - Turn adjustment screw until multimeter reads 5.0V
+       - Verify multiple times (incorrect voltage will damage ESP32)
 
 6. **Test power system:**
 
+<!-- end list -->
+
 ```
-   ✓ Measure battery voltage: should be 7.4-8.4V
-   ✓ Measure buck output: should be 5.0V ±0.1V
-   ✓ Connect LED to buck output: should light dimly
+   ✓ Measure battery voltage: should be 7.4-8.4V
+   ✓ Measure buck output: should be 5.0V ±0.1V
+   ✓ Connect LED to buck output: should light dimly
 ```
 
 ### Step 4: Mount ESP32
 
 1. **Create a secure mount:**
-   - Use standoffs or hot glue
-   - USB port must be accessible
-   - Leave space above for heat dissipation
+       - Use standoffs or hot glue
+       - USB port must be accessible
+       - Leave space above for heat dissipation
 
 2. **Connect power:**
 
+<!-- end list -->
+
 ```
-   Buck OUT+ → ESP32 VIN pin
-   Buck OUT- → ESP32 GND pin
+   Buck OUT+ → ESP32 VIN pin
+   Buck OUT- → ESP32 GND pin
 ```
 
 3. **Test ESP32:**
-   - Plug in USB cable (while battery connected is fine)
-   - Onboard LED should light
-   - ESP32 should be warm, not hot
+       - Plug in USB cable (while battery connected is fine)
+       - Onboard LED should light
+       - ESP32 should be warm, not hot
 
 ### Step 5: Wire the Light Sensors (LDRs)
 
 **Each LDR needs a voltage divider circuit:**
 
+[Image of LDR voltage divider circuit schematic]
+
 ```
 3.3V ──┬─── [LDR] ───┬─── [10kΩ] ─── GND
-       │             │
-     (exposed)    TO ESP32
-                 (GPIO 34/35)
+       │             │
+     (exposed)    TO ESP32
+                 (GPIO 34/35)
 ```
 
 **Left LDR:**
@@ -356,7 +328,7 @@ const int US_ECHO    = 26;
 **Mounting LDRs:**
 
 - Hot glue to front corners of chassis
-- Face forward/outward at ~45° angle
+- Face forward/outward at \~45° angle
 - Ensure nothing blocks light path
 - Keep legs short to reduce noise
 
@@ -365,17 +337,17 @@ const int US_ECHO    = 26;
 ```cpp
 // Upload this test sketch:
 void setup() {
-  Serial.begin(115200);
-  pinMode(34, INPUT);
-  pinMode(35, INPUT);
+  Serial.begin(115200);
+  pinMode(34, INPUT);
+  pinMode(35, INPUT);
 }
 
 void loop() {
-  Serial.print("Left: ");
-  Serial.print(analogRead(34));
-  Serial.print(" Right: ");
-  Serial.println(analogRead(35));
-  delay(500);
+  Serial.print("Left: ");
+  Serial.print(analogRead(34));
+  Serial.print(" Right: ");
+  Serial.println(analogRead(35));
+  delay(500);
 }
 
 // Cover each LDR - values should drop
@@ -397,48 +369,50 @@ GPIO21 ──[220Ω]── LED BLU ──┘
 
 1. **Identify LED pins:**
 
+<!-- end list -->
+
 ```
-   Looking at LED (flat side = cathode side):
-   
-   Longest pin = Common cathode (to GND)
-   
-   [R] [G] [-] [B]   ← Typical pinout
-    │   │   │   │
+   Looking at LED (flat side = cathode side):
+   
+   Longest pin = Common cathode (to GND)
+   
+   [R] [G] [-] [B]   ← Typical pinout
+    │   │   │   │
 ```
 
 2. **Solder resistors:**
-   - Cut resistor legs to ~5mm
-   - Solder 220Ω to each color pin (not cathode)
-   - Leave cathode leg bare
+       - Cut resistor legs to \~5mm
+       - Solder 220Ω to each color pin (not cathode)
+       - Leave cathode leg bare
 
 3. **Solder wires:**
-   - Red wire to RED resistor → GPIO23
-   - Green wire to GREEN resistor → GPIO22
-   - Blue wire to BLUE resistor → GPIO21
-   - Black wire to cathode → GND
+       - Red wire to RED resistor → GPIO23
+       - Green wire to GREEN resistor → GPIO22
+       - Blue wire to BLUE resistor → GPIO21
+       - Black wire to cathode → GND
 
 4. **Mount LED:**
-   - Drill 5mm hole in top of chassis
-   - Push LED through (resistors should be below)
-   - Secure with hot glue from underneath
-   - LED should be visible from all angles
+       - Drill 5mm hole in top of chassis
+       - Push LED through (resistors should be below)
+       - Secure with hot glue from underneath
+       - LED should be visible from all angles
 
 **Testing:**
 
 ```cpp
 void setup() {
-  pinMode(23, OUTPUT);
-  pinMode(22, OUTPUT);
-  pinMode(21, OUTPUT);
+  pinMode(23, OUTPUT);
+  pinMode(22, OUTPUT);
+  pinMode(21, OUTPUT);
 }
 
 void loop() {
-  digitalWrite(23, HIGH); delay(1000); // Red
-  digitalWrite(23, LOW);
-  digitalWrite(22, HIGH); delay(1000); // Green
-  digitalWrite(22, LOW);
-  digitalWrite(21, HIGH); delay(1000); // Blue
-  digitalWrite(21, LOW);
+  digitalWrite(23, HIGH); delay(1000); // Red
+  digitalWrite(23, LOW);
+  digitalWrite(22, HIGH); delay(1000); // Green
+  digitalWrite(22, LOW);
+  digitalWrite(21, HIGH); delay(1000); // Blue
+  digitalWrite(21, LOW);
 }
 ```
 
@@ -450,69 +424,81 @@ void loop() {
 
 1. **Power connections:**
 
+<!-- end list -->
+
 ```
-   Battery 7.4V → VCC
-   GND → GND (shared with ESP32 GND)
+   Battery 7.4V → VCC
+   GND → GND (shared with ESP32 GND)
 ```
 
 2. **Control connections:**
 
+<!-- end list -->
+
 ```
-   ESP32 GPIO15 → A-1A (Motor A)
-   ESP32 GPIO2  → A-1B (Motor A)
-   ESP32 GPIO16 → B-1A (Motor B)
-   ESP32 GPIO17 → B-1B (Motor B)
+   ESP32 GPIO15 → A-1A (Motor A)
+   ESP32 GPIO2  → A-1B (Motor A)
+   ESP32 GPIO16 → B-1A (Motor B)
+   ESP32 GPIO17 → B-1B (Motor B)
 ```
 
 3. **Motor connections:**
 
+<!-- end list -->
+
 ```
-   Left Motor:  Connect to Motor A output
-   Right Motor: Connect to Motor B output
+   Left Motor:  Connect to Motor A output
+   Right Motor: Connect to Motor B output
 ```
 
-   **Note:** Polarity determines direction. If motor spins wrong way, swap wires.
+   **Note:** Polarity determines direction. If motor spins wrong way, swap wires.
 
 #### For TB6612FNG Driver
 
 1. **Power connections:**
 
+<!-- end list -->
+
 ```
-   Battery 7.4V → VM
-   ESP32 3.3V → VCC
-   GND → GND (shared)
+   Battery 7.4V → VM
+   ESP32 3.3V → VCC
+   GND → GND (shared)
 ```
 
 2. **Control connections:**
 
+<!-- end list -->
+
 ```
-   ESP32 GPIO15 → AIN1
-   ESP32 GPIO2  → AIN2
-   ESP32 GPIO5  → PWMA
-   ESP32 GPIO16 → BIN1
-   ESP32 GPIO17 → BIN2
-   ESP32 GPIO4  → PWMB
-   ESP32 GPIO13 → STBY (or tie to VCC)
+   ESP32 GPIO15 → AIN1
+   ESP32 GPIO2  → AIN2
+   ESP32 GPIO5  → PWMA
+   ESP32 GPIO16 → BIN1
+   ESP32 GPIO17 → BIN2
+   ESP32 GPIO4  → PWMB
+   ESP32 GPIO13 → STBY (or tie to VCC)
 ```
 
 3. **Motor connections:**
 
+<!-- end list -->
+
 ```
-   Left Motor:  AO1, AO2
-   Right Motor: BO1, BO2
+   Left Motor:  AO1, AO2
+   Right Motor: BO1, BO2
 ```
 
-**The HAL code handles the differences automatically!**
+**The HAL code handles the differences automatically\!**
 
 ### Step 8: Wire the Ultrasonic Sensor
 
 **HC-SR04 connections:**
 
 ```
-VCC  → 5V (from buck converter OUT+)
+VCC  → 5V (from buck converter OUT+)
 TRIG → ESP32 GPIO25
 ECHO → ESP32 GPIO26
-GND  → GND
+GND  → GND
 ```
 
 **Mounting:**
@@ -526,214 +512,112 @@ GND  → GND
 ### Step 9: Final Assembly
 
 1. **Cable management:**
-   - Bundle wires with zip ties
-   - Keep power wires separate from signal wires
-   - Ensure nothing touches motor shafts
-   - Leave slack for vibration
+       - Bundle wires with zip ties
+       - Keep power wires separate from signal wires
+       - Ensure nothing touches motor shafts
+       - Leave slack for vibration
 
 2. **Secure all components:**
-   - Hot glue any loose boards
-   - Ensure ESP32 can't short against metal
-   - Batteries should not move
+       - Hot glue any loose boards
+       - Ensure ESP32 can't short against metal
+       - Batteries should not move
 
 3. **Label your bot:**
-   - Write bot_id (0-8) on chassis with marker
-   - Write hostname (`ember-bot-N`) on bottom
-   - This is critical for evolution experiments and network access
+       - Write bot\_id (0-8) on chassis with marker
+       - Write hostname (`ember-bot-N`) on bottom
+       - This is critical for evolution experiments and network access
 
 4. **Final inspection:**
 
-```
-   ✓ No exposed wire touching chassis
-   ✓ All components secure
-   ✓ Battery polarity correct
-   ✓ Motors can't touch circuit boards
-   ✓ USB port accessible
-   ✓ Power switch accessible
-   ✓ LED visible from top
-   ✓ LDRs unobstructed
-```
-
----
-
-## Programming the ESP32
-
-### Step 1: Install Arduino IDE
-
-1. Download from arduino.cc
-2. Install ESP32 board support:
-   - File → Preferences
-   - Additional Boards Manager URLs: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
-   - Tools → Board → Boards Manager
-   - Search "ESP32" and install
-
-### Step 2: Configure for ESP32
+<!-- end list -->
 
 ```
-Tools → Board → ESP32 Dev Module
-Tools → Upload Speed → 115200
-Tools → Port → (select your ESP32 port)
+   ✓ No exposed wire touching chassis
+   ✓ All components secure
+   ✓ Battery polarity correct
+   ✓ Motors can't touch circuit boards
+   ✓ USB port accessible
+   ✓ Power switch accessible
+   ✓ LED visible from top
+   ✓ LDRs unobstructed
 ```
 
-### Step 3: Configure WiFi (Optional but Recommended)
+-----
 
-Open `ember_v0.1_hal_ota.ino` and edit these lines at the top:
+## Programming and Network Setup
 
-```cpp
-const char* WIFI_SSID = "YourNetworkName";      // Your WiFi network
-const char* WIFI_PASSWORD = "YourPassword";      // Your WiFi password
-const char* OTA_HOSTNAME = "ember-bot-0";        // UNIQUE for each bot!
-const char* OTA_PASSWORD = "ember2025";          // OTA security password
-```
+This section covers the software setup, including Arduino IDE configuration, setting network credentials, and assigning a unique identity to each bot.
 
-**CRITICAL:** Each bot needs a unique hostname:
+### Step 1: Arduino IDE Setup
 
-- Bot 0: `ember-bot-0`
-- Bot 1: `ember-bot-1`
-- Bot 2: `ember-bot-2`
-- ... etc
+1. **Install Arduino IDE:** Download and install the latest version from arduino.cc.
+2. **Add ESP32 Board Support:**
+        - Go to `File > Preferences`.
+        - In "Additional Board Manager URLs", add: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+        - Click "OK".
+3. **Install ESP32 Boards:**
+        - Go to `Tools > Board > Boards Manager...`.
+        - Search for "ESP32" and install the package by Espressif Systems.
+4. **Select Board Settings:**
+        - `Tools > Board`: Select "ESP32 Dev Module".
+        - `Tools > Upload Speed`: Set to "115200".
+        - `Tools > Port`: Select the COM port corresponding to your ESP32.
 
-**If you skip WiFi configuration:**
+### Step 2: Configure Bot Identity and WiFi
 
-- Bot will work fine offline
-- No web dashboard
-- No OTA updates
-- Serial commands still work via USB
+This is the most critical step for enabling network features and running swarm experiments. You must edit the `ember_v0.1_hal_ota.ino` file.
 
-### Step 4: Upload the Code
+1. **Open the Sketch:** Open `ember_v0.1_hal_ota.ino` in the Arduino IDE.
 
-1. Open `ember_v0.1_hal_ota.ino`
-2. **IMPORTANT:** Set unique `bot_id` in code (around line 50):
+2. **Set WiFi Credentials:** Near the top of the file, find the `CONFIGURATION` block and enter your WiFi network's SSID and password.
 
-```cpp
-   Genome genome = {
-       .light_threshold = 0.5,
-       .efficiency = 1.0,
-       .bot_id = 0,  // ← CHANGE THIS (0-8 for 9 bots)
-       .generation = 0
-   };
-```
+    ` cpp     // WiFi credentials - CHANGE THESE     const char* WIFI_SSID = "YourNetworkName";     const char* WIFI_PASSWORD = "YourPassword"; `
 
-3. Click Upload (→ button)
-4. Wait for "Done uploading"
+3. **Set a Unique Hostname:** In the same block, define a unique hostname for this specific bot. This is used for accessing the web dashboard (e.g., `http://ember-bot-0.local/`).
 
-### Step 5: Test Via Serial Monitor
+    ` cpp     // OTA configuration     const char* OTA_HOSTNAME = "ember-bot-0";  // Change for each bot     const char* OTA_PASSWORD = "ember2025";     // OTA update password `
 
-1. Tools → Serial Monitor
-2. Set baud rate to 115200
-3. You should see:
+    **IMPORTANT:** Every bot on your network **must** have a unique hostname. The convention is `ember-bot-N`, where N is the bot's ID number.
 
-```
-   ╔═══════════════════════════════════════╗
-   ║     EMBER v0.1 - LIFE FROM LIGHT      ║
-   ║   HAL + OTA + Web + Storage Edition   ║
-   ║                                       ║
-   ║  Simple rule: Light = Energy = Life  ║
-   ║                                       ║
-   ║  Watch what emerges...                ║
-   ╚═══════════════════════════════════════╝
-   
-   [WiFi] Connecting to YourNetwork...
-   [WiFi] Connected!
-   [WiFi] IP: 192.168.1.50
-   [mDNS] Access at: http://ember-bot-0.local/
-   [OTA] Ready
-   [Web] Server started
-   
-   =================================
-   Bot ID: 0
-   Generation: 0
-   Light Threshold: 0.347
-   Efficiency: 1.123
-   =================================
-   
-   Light: 0.512 | Energy: 73.2 | Alive: 5s | Status: ALIVE | IP: 192.168.1.50
-```
+4. **Set the Bot's Internal ID:** A little further down, in the `GENETIC CODE` section, set the `bot_id`. This number should match the number in the hostname.
 
----
+    \`\`\`cpp
+    struct Genome {
+        // ...
+        uint8\_t bot\_id;
+        // ...
+    };
 
-## WiFi and Network Setup
+    Genome genome = {
+        .light\_threshold = 0.5,
+        .efficiency = 1.0,
+        .bot\_id = 0, // \<-- CHANGE THIS FOR EACH BOT (0, 1, 2, etc.)
+        .generation = 0
+    };
+    \`\`\`
 
-### LED Indicators During Boot
+    **Example for the first three bots:**
 
-Watch the LED to understand what's happening:
+    | Bot | `OTA_HOSTNAME` | `genome.bot_id` |
+    |:---:|:----------------|:---------------:|
+    | \#0  | `"ember-bot-0"` | `0`             |
+    | \#1  | `"ember-bot-1"` | `1`             |
+    | \#2  | `"ember-bot-2"` | `2`             |
 
-| LED Pattern | Meaning | What To Do |
-|-------------|---------|------------|
-| White flash 3× | Boot complete | Normal |
-| Blue pulse (slow) | Connecting to WiFi | Wait 10-20 seconds |
-| Blue flash 3× | WiFi connected | Success! Access web dashboard |
-| Yellow flash 3× | WiFi failed | Check SSID/password, bot works offline |
+### Step 3: First Upload via USB
 
-### Testing Web Interface
+1. **Connect the Bot:** Connect the ESP32 to your computer with a data-capable Micro-USB cable.
+2. **Click Upload:** Press the "Upload" button (→) in the Arduino IDE.
+3. **Wait for Completion:** The IDE will compile the code and upload it. This first upload must be done via USB. All subsequent uploads can be done wirelessly (OTA).
 
-**If WiFi connected successfully:**
+### Step 4: Verify via Serial Monitor
 
-1. Note the URL in Serial Monitor: `http://ember-bot-0.local/`
-2. Open that URL in your browser
-3. You should see the live dashboard with:
-   - Pulsing LED indicator
-   - Real-time energy/light stats
-   - Genome information
-   - Control buttons
+1. **Open Serial Monitor:** Go to `Tools > Serial Monitor` and set the baud rate to `115200`.
+2. **Check the Output:** You should see the boot sequence, including the WiFi connection status and the bot's assigned IP and `.local` address. This confirms your setup is working.
 
-**If `.local` address doesn't work:**
+    `[WiFi] Connected!     [WiFi] IP: 192.168.1.50     [mDNS] Access at: http://ember-bot-0.local/     ...     Light: 0.512 | Energy: 73.2 | Alive: 5s | Status: ALIVE | IP: 192.168.1.50`
 
-- Use IP address instead (shown in Serial Monitor)
-- Windows: Install [Bonjour Print Services](https://support.apple.com/kb/DL999)
-- Linux: `sudo apt install avahi-daemon`
-- Mac: Should work automatically
-
-### Testing OTA Updates
-
-**After first USB upload, all future uploads can be wireless:**
-
-1. Make a small change to code (e.g., add a comment)
-2. Arduino IDE → Tools → Port → **Network Ports**
-3. Select `ember-bot-0` from network ports list
-4. Click Upload
-5. Watch LED:
-   - Purple pulse = Uploading
-   - Green flash 5× = Success!
-   - Red flash 10× = Failed (try again)
-
-**If OTA port doesn't appear:**
-
-- Wait 30 seconds after bot boots
-- Check bot is on same WiFi network as computer
-- Check firewall isn't blocking port 3232
-- Refresh port list (close and reopen Tools → Port)
-
-### WiFi Troubleshooting
-
-**Problem:** Bot won't connect to WiFi
-
-**Solutions:**
-
-- Verify SSID/password are correct (case-sensitive!)
-- Ensure 2.4GHz network (ESP32 doesn't support 5GHz)
-- Move bot closer to router
-- Check router allows new devices
-- Try different WiFi network
-
-**Problem:** WiFi keeps dropping
-
-**Solutions:**
-
-- Bot auto-reconnects every 30 seconds
-- Check WiFi signal strength (shown in web dashboard)
-- Move bot closer to router or add WiFi extender
-- Life continues normally even if WiFi drops
-
-**Problem:** Can't access from other devices on network
-
-**Solutions:**
-
-- Check firewall settings on both bot and computer
-- Try direct IP address instead of .local hostname
-- Ensure all devices on same network (not guest network)
-
----
+-----
 
 ## First Power-On Checklist
 
@@ -773,7 +657,7 @@ Watch the LED to understand what's happening:
 - Try different USB cable
 - Check drivers installed (CP210x or CH340)
 
----
+-----
 
 ## Calibration Procedure
 
@@ -781,17 +665,17 @@ Watch the LED to understand what's happening:
 
 1. Place bot in completely dark box
 2. Open Serial Monitor or web dashboard
-3. Note light level reading (should be <0.05)
+3. Note light level reading (should be \<0.05)
 4. If too high, check LDR circuit wiring
 5. Use `sensors` command for detailed readings
 
 ### Step 2: Bright Calibration
 
 1. Shine flashlight directly at LDRs
-2. Note light level reading (should be >0.95)
+2. Note light level reading (should be \>0.95)
 3. If too low, check LDR isn't damaged
 4. Use web dashboard for real-time monitoring
-5. If readings differ >50% between left/right, check wiring
+5. If readings differ \>50% between left/right, check wiring
 
 ### Step 3: Survival Test
 
@@ -799,26 +683,26 @@ Watch the LED to understand what's happening:
 2. Watch for 5 minutes (use web dashboard or serial)
 3. Energy should stay relatively stable (±10%)
 4. **If dying:**
-   - Web: Click randomize or adjust threshold
-   - Serial: `threshold 0.3` then `reset`
-5. **If capped at 100:** Genome well-suited (this is good!)
+       - Web: Click randomize or adjust threshold
+       - Serial: `threshold 0.3` then `reset`
+5. **If capped at 100:** Genome well-suited (this is good\!)
 
 ### Step 4: Network Test (If WiFi Enabled)
 
 1. **Web dashboard:**
-   - Should auto-refresh every 2 seconds
-   - Try clicking "Mutate" button
-   - Verify genome changes and saves
+       - Should auto-refresh every 2 seconds
+       - Try clicking "Mutate" button
+       - Verify genome changes and saves
 
 2. **JSON API:**
-   - Open `http://ember-bot-0.local/api/stats`
-   - Should see JSON data
-   - Save for data logging scripts
+       - Open `http://ember-bot-0.local/api/stats`
+       - Should see JSON data
+       - Save for data logging scripts
 
 3. **OTA Update:**
-   - Make code change
-   - Upload via network port
-   - Verify purple LED and success flash
+       - Make code change
+       - Upload via network port
+       - Verify purple LED and success flash
 
 ### Step 5: Motor Test (Even Though Disabled)
 
@@ -828,26 +712,28 @@ The HAL automatically handles your motor driver type, so this test works for bot
 
 1. Temporarily enable motors in code:
 
+<!-- end list -->
+
 ```cpp
-   // In loop(), add:
-   motors.forward(100);   // Both forward
-   delay(2000);
-   motors.backward(100);  // Both backward
-   delay(2000);
-   motors.stop();
-   delay(2000);
+   // In loop(), add:
+   motors.forward(100);   // Both forward
+   delay(2000);
+   motors.backward(100);  // Both backward
+   delay(2000);
+   motors.stop();
+   delay(2000);
 ```
 
 2. Each motor should:
-   - Spin forward smoothly
-   - Spin backward smoothly
-   - Stop completely
+       - Spin forward smoothly
+       - Spin backward smoothly
+       - Stop completely
 
 3. If motor spins wrong direction, swap motor wires at driver
 
 4. After testing, remove test code and re-upload EMBER v0.1 (motors disabled)
 
----
+-----
 
 ## Troubleshooting
 
@@ -865,7 +751,7 @@ The HAL automatically handles your motor driver type, so this test works for bot
 4. Move closer to router
 5. Serial command `wifi` shows connection status
 
----
+-----
 
 **Problem:** Web dashboard doesn't load
 
@@ -879,7 +765,7 @@ The HAL automatically handles your motor driver type, so this test works for bot
 4. Check firewall settings
 5. Restart browser
 
----
+-----
 
 **Problem:** OTA upload fails
 
@@ -887,13 +773,13 @@ The HAL automatically handles your motor driver type, so this test works for bot
 
 **Fix:**
 
-1. Check battery voltage (should be >7V)
+1. Check battery voltage (should be \>7V)
 2. Move bot closer to router
 3. Try upload again (network ports can be flaky)
 4. If repeated failures, use USB upload
 5. Check Serial Monitor for error messages
 
----
+-----
 
 ### Hardware Issues
 
@@ -906,7 +792,7 @@ The HAL automatically handles your motor driver type, so this test works for bot
 3. Check wiring: GPIO23=red, GPIO22=green, GPIO21=blue
 4. Verify common cathode connected to GND
 
----
+-----
 
 **Problem:** Light sensor not responding
 
@@ -917,19 +803,19 @@ The HAL automatically handles your motor driver type, so this test works for bot
 3. Verify circuit: 3.3V → LDR → GPIO34/35 → 10kΩ → GND
 4. Measure voltage at GPIO (should vary 0-3.3V with light)
 
----
+-----
 
 **Problem:** Bot resets randomly
 
 **Fix:**
 
-1. Check battery voltage under load (>6.5V)
+1. Check battery voltage under load (\>6.5V)
 2. Charge batteries fully
 3. Add 100µF capacitor across buck converter output
 4. Check all GND connections
 5. WiFi can draw power - disable if battery weak
 
----
+-----
 
 **Problem:** Genome doesn't save across reboots
 
@@ -943,7 +829,7 @@ The HAL automatically handles your motor driver type, so this test works for bot
 4. Serial command: `genome` to verify after reboot
 5. If still failing, check ESP32 flash isn't full
 
----
+-----
 
 ## Building Multiple Bots
 
@@ -962,7 +848,7 @@ The HAL automatically handles your motor driver type, so this test works for bot
 1. Flash Bot 0 with `ember-bot-0`, verify it works
 2. Flash Bot 1 with `ember-bot-1`, verify it works
 3. Continue for all bots
-4. **Once all working:** Use OTA to update all simultaneously!
+4. **Once all working:** Use OTA to update all simultaneously\!
 
 **Quality control checklist per bot:**
 
@@ -988,9 +874,9 @@ The HAL automatically handles your motor driver type, so this test works for bot
 - Hardware assembly: 15-20 hours
 - Network setup: +2-3 hours
 - Testing/calibration: +2-3 hours
-- **Total: ~24-26 hours** (spread over several days)
+- **Total: \~24-26 hours** (spread over several days)
 
----
+-----
 
 ## What Success Looks Like
 
@@ -1003,7 +889,7 @@ The HAL automatically handles your motor driver type, so this test works for bot
 3. LED shows life state (green/red)
 4. Serial output every second with stats
 5. Energy rising in light, falling in dark
-6. Bot "dies" (LED off) in darkness after ~16 minutes
+6. Bot "dies" (LED off) in darkness after \~16 minutes
 
 **Network success indicators:**
 
@@ -1020,7 +906,7 @@ The HAL automatically handles your motor driver type, so this test works for bot
 
 - LED solid green
 - Energy near 100 (stable)
-- Light reading >0.6
+- Light reading \>0.6
 - Web dashboard shows "Thriving"
 
 **In room light:**
@@ -1034,8 +920,8 @@ The HAL automatically handles your motor driver type, so this test works for bot
 
 - LED fast red flash
 - Energy dropping steadily (-0.1/second)
-- Light reading <0.1
-- Death after ~1000 seconds
+- Light reading \<0.1
+- Death after \~1000 seconds
 - Web dashboard shows "Critical" then "DEAD"
 
 ### Ready for Evolution
@@ -1059,13 +945,13 @@ The HAL automatically handles your motor driver type, so this test works for bot
 - Genome for each bot
 - Easy mutation/selection via web interface
 
-**If all criteria met, you're ready for evolution experiments!**
+**If all criteria met, you're ready for evolution experiments\!**
 
----
+-----
 
 ## Next Steps
 
-1. **Read the EVOLUTION_GUIDE.md** - Running selection experiments
+1. **Read the EVOLUTION\_GUIDE.md** - Running selection experiments
 2. **Set up monitoring** - Web dashboards or API scripts
 3. **Build your arena** - Controlled environment with adjustable light
 4. **Start with simple tests** - Bright vs dim vs dark
@@ -1075,22 +961,22 @@ The HAL automatically handles your motor driver type, so this test works for bot
 
 **You've built networked artificial life. Now watch it evolve while monitoring it in real-time.**
 
----
+-----
 
 ## Common Mistakes to Avoid
 
-❌ **Don't skip the buck converter voltage adjustment** - will damage ESP32  
-❌ **Don't mount LDRs facing up** - chassis shadow affects readings  
-❌ **Don't forget unique bot_id AND hostname** - ruins tracking  
-❌ **Don't use same hostname for multiple bots** - network conflicts  
-❌ **Don't power motors from buck converter** - needs too much current  
-❌ **Don't leave battery charging unattended** - fire risk  
-❌ **Don't forget to test OTA before final assembly** - hard to debug later  
-❌ **Don't skip WiFi if you want evolution experiments** - manual tracking is tedious  
-❌ **Don't forget to save genome changes** - use `save` command or web button  
-❌ **Don't cross signal and power wires** - causes noise in sensors  
+❌ **Don't skip the buck converter voltage adjustment** - will damage ESP32  
+❌ **Don't mount LDRs facing up** - chassis shadow affects readings  
+❌ **Don't forget unique bot\_id AND hostname** - ruins tracking  
+❌ **Don't use same hostname for multiple bots** - network conflicts  
+❌ **Don't power motors from buck converter** - needs too much current  
+❌ **Don't leave battery charging unattended** - fire risk  
+❌ **Don't forget to test OTA before final assembly** - hard to debug later  
+❌ **Don't skip WiFi if you want evolution experiments** - manual tracking is tedious  
+❌ **Don't forget to save genome changes** - use `save` command or web button  
+❌ **Don't cross signal and power wires** - causes noise in sensors  
 
----
+-----
 
 ## Support and Resources
 
@@ -1107,7 +993,7 @@ The HAL automatically handles your motor driver type, so this test works for bot
 
 - ESP32: espressif.com
 - L9110S: GitHub datasheets
-- TB6612FNG: sparkfun.com/products/14450
+- TB6612FNG: [sparkfun.com/products/14450](https://www.google.com/search?q=https://sparkfun.com/products/14450)
 - GL5516: common LDR datasheet
 - HC-SR04: multiple sources online
 
@@ -1118,10 +1004,10 @@ The HAL automatically handles your motor driver type, so this test works for bot
 - Web Server: ESP32 WebServer examples
 - Preferences: ESP32 NVS documentation
 
----
+-----
 
-*EMBER v0.1 Build Guide - HAL+OTA Edition*  
-*For digital H-bridge motor drivers*  
-*With network features and persistent storage*  
-*Part of the Forge Theory Project*  
+*EMBER v0.1 Build Guide - HAL+OTA Edition*  
+*For digital H-bridge motor drivers*  
+*With network features and persistent storage*  
+*Part of the Forge Theory Project*  
 *MIT License*

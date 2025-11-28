@@ -2,7 +2,7 @@
 
 **Life From Light - Hardware Implementation with HAL+OTA**
 
----
+-----
 
 ## Overview
 
@@ -10,11 +10,11 @@ EMBER v0.1 is the first implementation of the universal life pattern. This versi
 
 **Core Behavior:** Bot gains energy in light, loses energy in darkness, dies when energy reaches zero.
 
-**Hardware Platform:** Mobile platform with dual TT motors (disabled in v0.1), dual light sensors for directional sensing, RGB LED for state visualization, and network connectivity for remote monitoring and OTA updates.
+**Hardware Platform:** A networked, mobile-ready platform. It features dual light sensors, an RGB LED for rich status visualization, and integrated WiFi for a web dashboard, JSON API, and Over-The-Air (OTA) updates. Motors are included but disabled until v0.2.
 
 **Software Architecture:** Hardware Abstraction Layer (HAL) for clean hardware/software separation, OTA update capability, web dashboard, persistent storage, and JSON API.
 
----
+-----
 
 ## Hardware Components
 
@@ -40,20 +40,25 @@ EMBER v0.1 is the first implementation of the universal life pattern. This versi
 | Resistor | 220Ω | 3 | RGB LED current limiting |
 | Capacitor | 100µF 16V | 1 | Power smoothing (optional) |
 
----
+-----
 
 ## Power Architecture
 
-```
+[Image of two 18650 batteries wired in series diagram]
+
+````
 [Battery 1: 3.7V] ──┐
                     ├─── 7.4V ─┬─→ [Motor Driver] → Motors
 [Battery 2: 3.7V] ──┘          │
                                ├─→ [Buck Converter] → 5V ─┬─→ ESP32 (VIN)
-                               │                           ├─→ HC-SR04
-                               │                           └─→ RGB LED
+                               │                          ├─→ HC-SR04
+                               │                          └─→ RGB LED
                                │
                                └─→ [TP4056 Charging Board]
-```
+
+
+[Image of LM2596 buck converter wiring diagram]
+
 
 ### Power Budget
 
@@ -87,7 +92,7 @@ const char* WIFI_SSID = "YourNetwork";      // 2.4GHz WiFi SSID
 const char* WIFI_PASSWORD = "YourPassword";  // Network password
 const char* OTA_HOSTNAME = "ember-bot-0";    // Unique per bot (0-8)
 const char* OTA_PASSWORD = "ember2025";      // OTA security
-```
+````
 
 ### Network Services
 
@@ -133,9 +138,9 @@ preferences.putUInt("generation", genome.generation);
 **Storage Characteristics:**
 
 - Location: ESP32 NVS partition
-- Capacity: ~32KB available
+- Capacity: \~32KB available
 - Persistence: Survives reboots, power loss, code updates
-- Write cycles: ~100,000 per sector (adequate for experiments)
+- Write cycles: \~100,000 per sector (adequate for experiments)
 - Access: Preferences API (key-value store)
 
 ### Web Dashboard
@@ -192,7 +197,7 @@ preferences.putUInt("generation", genome.generation);
 - External control systems
 - Long-term fitness analysis
 
----
+-----
 
 ## Pin Assignments
 
@@ -216,7 +221,7 @@ preferences.putUInt("generation", genome.generation);
      GPIO12  [13]              [18] GPIO4   → MOTOR_B_EN (or PWM)
         GND  [14]              [17] GPIO0
      GPIO13  [15] → MOTOR_STBY [16] GPIO2   → MOTOR_A_IN2
-                                             GPIO15 → MOTOR_A_IN1
+                                      GPIO15 → MOTOR_A_IN1
 ```
 
 ### Detailed Pin Mapping
@@ -232,13 +237,15 @@ namespace HAL::Pins {
 
 **Circuit per LDR:**
 
-```
+[Image of LDR voltage divider circuit schematic]
+
 3.3V ──┬─── LDR ───┬─── 10kΩ ─── GND
-       │           │
-       │           └─── GPIO34/35 (ADC input)
-       │
-    (voltage divider: 0V in darkness, 3.3V in bright light)
-```
+│           │
+│           └─── GPIO34/35 (ADC input)
+│
+(voltage divider: 0V in darkness, 3.3V in bright light)
+
+````
 
 **HAL Interface:**
 
@@ -249,7 +256,7 @@ float left = lightSensor.readLeft();      // 0.0-1.0
 float right = lightSensor.readRight();    // 0.0-1.0
 float avg = lightSensor.readAverage();    // 0.0-1.0
 float diff = lightSensor.readDifference(); // -1.0 to +1.0
-```
+````
 
 #### RGB LED (Output)
 
@@ -316,12 +323,12 @@ namespace HAL::Pins {
 HAL::MotorDriver motors(15, 2, 16, 17, 5, 4, 13);
 
 motors.setMotors(100, 100);   // Both forward at speed 100
-motors.forward(150);           // Both forward
-motors.backward(150);          // Both backward
-motors.turnLeft(100);          // Rotate left
-motors.turnRight(100);         // Rotate right
-motors.stop();                 // Stop both
-motors.disable();              // Power down (v0.1 default)
+motors.forward(150);          // Both forward
+motors.backward(150);         // Both backward
+motors.turnLeft(100);         // Rotate left
+motors.turnRight(100);        // Rotate right
+motors.stop();                // Stop both
+motors.disable();             // Power down (v0.1 default)
 ```
 
 #### Ultrasonic Sensor (Future)
@@ -341,7 +348,7 @@ HAL::UltrasonicSensor ultrasonic(25, 26);
 float distance = ultrasonic.readDistance();  // Returns cm or -1.0 if no echo
 ```
 
----
+-----
 
 ## Genome Structure
 
@@ -410,7 +417,7 @@ void loadGenome() {
 }
 ```
 
----
+-----
 
 ## Energy System
 
@@ -464,7 +471,7 @@ void updateEnergy(float deltaTime) {
 int flash_period = 100 + (int)(energy * 9);  // 100ms (critical) to 1000ms (struggling)
 ```
 
----
+-----
 
 ## LED State Display
 
@@ -513,7 +520,7 @@ void showState() {
 }
 ```
 
----
+-----
 
 ## Sensor Calibration
 
@@ -523,7 +530,7 @@ void showState() {
 
 - Dark resistance: 1MΩ
 - Bright resistance: 10kΩ (10 lux)
-- Response time: ~20ms
+- Response time: \~20ms
 
 **Voltage Divider Output:**
 
@@ -570,10 +577,10 @@ sensors    → Shows all sensor readings (normalized + raw)
 
 **Manual Calibration Steps:**
 
-1. **Dark:** Cover LDRs → expect reading <0.05
-2. **Bright:** Flashlight → expect reading >0.95
+1. **Dark:** Cover LDRs → expect reading \<0.05
+2. **Bright:** Flashlight → expect reading \>0.95
 3. **Ambient:** Typical room → record baseline (e.g., 0.45)
-4. **Set Threshold:** Via web or serial to ~0.5 × ambient
+4. **Set Threshold:** Via web or serial to \~0.5 × ambient
 
 **Web Dashboard Calibration:**
 
@@ -582,7 +589,7 @@ sensors    → Shows all sensor readings (normalized + raw)
 - Save to flash immediately
 - Visual feedback via live LED
 
----
+-----
 
 ## Fitness Measurement
 
@@ -657,7 +664,7 @@ with open('fitness_log.csv', 'w') as f:
         time.sleep(5)
 ```
 
----
+-----
 
 ## Serial Interface
 
@@ -715,7 +722,7 @@ Web: http://ember-bot-3.local/
 -------------------
 ```
 
----
+-----
 
 ## Physical Assembly
 
@@ -756,7 +763,7 @@ Web: http://ember-bot-3.local/
 6. **Buck converter:** Near ESP32 power input
 7. **Motor driver:** Near motors, short wire runs
 
----
+-----
 
 ## Expected Behaviors (v0.1)
 
@@ -774,7 +781,7 @@ Web: http://ember-bot-3.local/
 
 **Genome Selection:** Favors LOW `light_threshold`
 
----
+-----
 
 ### Scenario 2: Dim Light + Network Monitoring
 
@@ -788,9 +795,9 @@ Web: http://ember-bot-3.local/
 - Web dashboards show different states
 - JSON API enables batch monitoring
 
-**Genome Selection:** Favors `threshold` < ambient
+**Genome Selection:** Favors `threshold` \< ambient
 
----
+-----
 
 ### Scenario 3: WiFi Dropout During Experiment
 
@@ -806,7 +813,7 @@ Web: http://ember-bot-3.local/
 
 **Robustness Test:** Network is optional, life is not
 
----
+-----
 
 ### Scenario 4: OTA Evolution Cycle
 
@@ -824,7 +831,7 @@ Web: http://ember-bot-3.local/
 
 **Efficiency:** 10× faster than USB-based evolution
 
----
+-----
 
 ## Troubleshooting
 
@@ -846,7 +853,7 @@ Web: http://ember-bot-3.local/
 wifi  // Shows detailed connection status
 ```
 
----
+-----
 
 **Problem:** Web dashboard doesn't load
 
@@ -862,7 +869,7 @@ wifi  // Shows detailed connection status
 - Use IP from Serial Monitor
 - Install Bonjour (Windows) or avahi (Linux)
 
----
+-----
 
 **Problem:** Genome doesn't persist across reboots
 
@@ -881,13 +888,13 @@ genome   // Verify after reboot
 clear    // If corrupted, clear and start fresh
 ```
 
----
+-----
 
 ### Hardware Issues
 
 (Unchanged from previous spec - HAL handles hardware variations)
 
----
+-----
 
 ## Component Sourcing
 
@@ -902,13 +909,13 @@ clear    // If corrupted, clear and start fresh
 | Buck converter | 5V 3A output | WiFi increases peak current |
 | Batteries | LiPo 2000mAh+ | Runtime with WiFi |
 
----
+-----
 
 ## Safety Notes
 
 (Unchanged from previous spec)
 
----
+-----
 
 ## Version History
 
@@ -940,7 +947,7 @@ clear    // If corrupted, clear and start fresh
 - Exploration vs exploitation
 - Real-time movement tracking via API
 
----
+-----
 
 ## Files in This Release
 
@@ -953,7 +960,7 @@ clear    // If corrupted, clear and start fresh
   └── README.md                   # Quick start guide
 ```
 
----
+-----
 
 ## Success Criteria
 
@@ -962,7 +969,7 @@ clear    // If corrupted, clear and start fresh
 ### Core Life Functions
 
 1. Bot survives indefinitely in bright light (energy stable at 100)
-2. Bot dies predictably in darkness (~1000 seconds)
+2. Bot dies predictably in darkness (\~1000 seconds)
 3. Different genomes show different survival times
 4. LED clearly indicates energy state + network status
 
@@ -987,8 +994,6 @@ clear    // If corrupted, clear and start fresh
 
 Evolution experiments can scale efficiently.
 
----
+-----
 
-*EMBER v0.1 Technical Specification - HAL+OTA Edition*  
-*Updated: 2025*  
-*Part of the Forge Theory Project*
+*EMBER v0.1 Technical Specification - HAL+OTA Edition* *Updated: 2025* *Part of the Forge Theory Project*
