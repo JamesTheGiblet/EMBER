@@ -1,9 +1,11 @@
 # EMBER v0.1 - Life From Light
 
-**The Universal Life Pattern Implemented in Hardware**
-```
+## The Universal Life Pattern Implemented in Hardware
+
+```txt
 ╔═══════════════════════════════════════╗
 ║     EMBER - ARTIFICIAL LIFE v0.1      ║
+║         HAL + OTA Edition             ║
 ║                                       ║
 ║  Simple rule: Light = Energy = Life  ║
 ║                                       ║
@@ -15,11 +17,27 @@
 
 ---
 
+## 🆕 NEW in HAL+OTA Edition
+
+This version adds powerful new features while keeping the core life pattern unchanged:
+
+- **🌐 Web Dashboard** - Monitor bots at `http://ember-bot-0.local/` with live stats
+- **📡 OTA Updates** - Upload code wirelessly (no USB after first flash)
+- **💾 Persistent Storage** - Genome survives reboots and power loss
+- **🔄 Auto-Reconnect** - WiFi resilience with automatic recovery
+- **📊 JSON API** - Automate swarm monitoring and data logging
+- **🏗️ Hardware Abstraction** - Clean HAL for easy hardware swaps
+
+**WiFi is optional** - bots work fine offline. Network features enhance but don't replace core functionality.
+
+---
+
 ## What Is This?
 
 EMBER is **not a robot**. It's a **minimal viable organism**.
 
 A physical implementation of the fundamental equation that all life follows:
+
 ```cpp
 energy -= EXISTENCE_COST;
 energy += detectResource() * EFFICIENCY;
@@ -34,15 +52,32 @@ Watch it live. Watch it die. Watch evolution happen in real-time.
 
 ### If You Just Want to See It Work
 
-1. **Flash the code** to ESP32 (change `bot_id` to unique number 0-8)
-2. **Connect battery** and power on
-3. **Place in light** and watch LED:
-   - 🟢 **Green** = Thriving (gaining energy)
-   - 🔴 **Red flashing** = Dying (losing energy)
-   - ⚫ **Off** = Dead (energy = 0)
-4. **Open Serial Monitor** (115200 baud) to see:
+1. **Configure WiFi** (optional but recommended):
+
+```cpp
+   const char* WIFI_SSID = "YourNetwork";
+   const char* WIFI_PASSWORD = "YourPassword";
+   const char* OTA_HOSTNAME = "ember-bot-0";  // Unique per bot
 ```
-   Light: 0.512 | Energy: 73.2 | Alive: 342s | Status: ALIVE
+
+2. **Flash the code** to ESP32 (change `bot_id` to unique number 0-8)
+
+3. **Connect battery** and power on
+
+4. **Watch LED sequence**:
+   - White flash 3× = Boot complete
+   - Blue pulse = Connecting to WiFi
+   - Blue flash 3× = WiFi connected
+   - Then: Green (thriving) / Red (dying) / Off (dead)
+
+5. **Access web dashboard** (if WiFi connected):
+   - Browser: `http://ember-bot-0.local/`
+   - Auto-refreshes every 2 seconds with live stats
+
+6. **Or use Serial Monitor** (115200 baud):
+
+```txt
+   Light: 0.512 | Energy: 73.2 | Alive: 342s | Status: ALIVE | IP: 192.168.1.50
 ```
 
 ### If You Want to Build One
@@ -62,14 +97,143 @@ Watch it live. Watch it die. Watch evolution happen in real-time.
 4. **Run experiment** - place bots, measure survival times
 5. **Select winners** - copy genes from longest-surviving bots
 6. **Breed next generation** - mutate and repeat
+7. **Or automate it all** - use the `evolution_experiment.py` script
+
+---
+
+## Network Features
+
+### Web Interface
+
+Access your bot's dashboard via browser at: `http://ember-bot-N.local/`
+
+**Dashboard displays:**
+
+- 🔴🟢⚫ Live LED indicator (pulses with actual bot state)
+- 📊 Life status (alive/dead, energy bar, survival time, uptime)
+- 🌞 Environment (all light sensor readings)
+- 🧬 Genome (complete genetic code)
+- 📡 Network info (hostname, IP, WiFi signal, free memory)
+
+**Control buttons:**
+
+- **🧬 Mutate** - Apply random mutation to genome
+- **🔄 Reset Life** - Reset energy to 100, keep genome
+- **🎲 Randomize** - Generate completely new random genome
+- **💾 Save Genome** - Write current genome to flash immediately
+
+**Auto-refresh:** Page updates every 2 seconds automatically
+
+### Over-The-Air (OTA) Updates
+
+**First upload requires USB**, then all future uploads are wireless:
+
+1. Make code changes
+2. Arduino IDE → Tools → Port → **Network Ports** → ember-bot-0
+3. Click Upload
+4. Watch LED turn purple (updating)
+5. Green flash 5× = success!
+
+**Update all 9 bots in <5 minutes** - no chassis disassembly required.
+
+**LED indicators during OTA:**
+
+- 🟣 Purple pulse = Uploading
+- 🟢 Green flash 5× = Upload successful
+- 🔴 Red flash 10× = Upload failed
+
+### Persistent Storage
+
+**Genome survives reboots:**
+
+- Saved to ESP32 NVS flash (non-volatile storage)
+- Automatic save on mutations via web interface
+- Manual save via serial command `save` or web button
+- Survives power loss, reboots, code re-uploads
+- Clear storage with serial command `clear`
+
+**What gets saved:**
+
+```cpp
+- light_threshold
+- efficiency
+- bot_id
+- generation
+```
+
+### WiFi Configuration
+
+**Edit at top of code before first upload:**
+
+```cpp
+const char* WIFI_SSID = "YourNetworkName";
+const char* WIFI_PASSWORD = "YourPassword";
+const char* OTA_HOSTNAME = "ember-bot-0";  // Unique for each bot (0-8)
+const char* OTA_PASSWORD = "ember2025";     // OTA update security
+```
+
+**Auto-reconnect:** Bot checks connection every 30 seconds and attempts to reconnect if dropped. Life continues normally even if WiFi is down.
+
+### JSON API
+
+**Endpoint:** `http://ember-bot-N.local/api/stats`
+
+**Returns real-time data:**
+
+```json
+{
+  "bot_id": 0,
+  "generation": 5,
+  "alive": true,
+  "energy": 73.45,
+  "light_level": 0.512,
+  "light_left": 0.498,
+  "light_right": 0.526,
+  "threshold": 0.347,
+  "efficiency": 1.123,
+  "alive_time": 342,
+  "uptime": 450,
+  "wifi_rssi": -67,
+  "free_heap": 234567
+}
+```
+
+**Perfect for:**
+
+- Data logging scripts
+- Swarm monitoring dashboards
+- Evolution tracking
+- Automated experiments
+- External control systems
+
+**Example Python monitoring script:**
+
+```python
+import requests
+import time
+
+bots = [f"ember-bot-{i}.local" for i in range(9)]
+
+while True:
+    for bot in bots:
+        try:
+            r = requests.get(f"http://{bot}/api/stats", timeout=2)
+            data = r.json()
+            print(f"{bot}: Energy={data['energy']:.1f}% Gen={data['generation']} {'ALIVE' if data['alive'] else 'DEAD'}")
+        except:
+            print(f"{bot}: OFFLINE")
+    print("-" * 50)
+    time.sleep(5)
+```
 
 ---
 
 ## Project Structure
-```
+
+```txt
 /ember/
 ├── README.md                      ← You are here
-├── ember_v0.1_light.ino           ← Main code (flash this)
+├── ember_v0.1_hal_ota.ino         ← Main code (HAL+OTA edition)
 │
 ├── /docs/
 │   ├── EMBER_MANIFEST.md          ← Philosophy: what EMBER is and why
@@ -81,22 +245,18 @@ Watch it live. Watch it die. Watch evolution happen in real-time.
 ├── /hardware/
 │   ├── circuit_diagram.png        ← Wiring schematic
 │   ├── parts_list.md              ← Shopping list with links
-│   ├── chassis_design.dxf         ← Laser-cut chassis (optional)
 │   └── /photos/
-│       ├── assembly_step1.jpg
-│       ├── assembly_step2.jpg
-│       └── ...
 │
 ├── /experiments/
 │   ├── log_template.md            ← Template for recording results
 │   └── /results/
-│       ├── experiment_001.md      ← Your evolution data goes here
-│       └── ...
 │
 └── /tools/
     ├── serial_logger.py           ← Auto-log fitness data
     ├── genome_analyzer.py         ← Analyze which genes win
-    └── batch_flasher.sh           ← Flash multiple bots quickly
+    ├── swarm_monitor.py           ← Monitor all bots via API
+    ├── evolution_experiment.py    ← Full experiment automation
+    └── README.md                  ← Tool usage instructions
 ```
 
 ---
@@ -106,6 +266,7 @@ Watch it live. Watch it die. Watch evolution happen in real-time.
 ### 1. It's Real, Not Simulated
 
 This isn't software pretending to be life. It's physical hardware following real physical laws:
+
 - Light photons hit silicon photodiodes
 - Current flows through transistors
 - Energy dissipates as heat
@@ -114,6 +275,7 @@ This isn't software pretending to be life. It's physical hardware following real
 ### 2. It Actually Evolves
 
 Not "AI learning" or "neural network training." Actual Darwinian evolution:
+
 - **Random variation** - each bot has different genes
 - **Environmental selection** - your lighting determines who lives
 - **Inheritance** - copy genes from survivors to next generation
@@ -123,6 +285,7 @@ Not "AI learning" or "neural network training." Actual Darwinian evolution:
 ### 3. It's Minimal
 
 EMBER uses the **smallest possible rule set** that produces emergence:
+
 - One sensor type (light)
 - Two genes (threshold, efficiency)
 - Three states (thriving, dying, dead)
@@ -135,12 +298,35 @@ Nothing is pre-programmed except the capacity to sense, the cost of existence, a
 ### 4. It's Universal
 
 The same code works with ANY resource sensor:
+
 - Swap LDR for microphone → survives near sound
 - Swap LDR for thermistor → survives in warmth  
 - Swap LDR for chemical sensor → survives near food
 - **The life equation doesn't change**
 
 EMBER isn't "a light-seeking robot." It's a **template for artificial life** that happens to use light in version 0.1.
+
+### 5. Hardware Abstraction Layer
+
+Clean interfaces separate hardware from logic:
+
+```cpp
+// Instead of raw GPIO:
+analogRead(34);
+ledcWrite(0, 255);
+
+// Use HAL:
+lightSensor.readAverage();
+led.green(255);
+motors.forward(200);
+```
+
+**Benefits:**
+
+- Swap hardware without touching application code
+- Support multiple motor driver types automatically
+- Portable across different ESP32 variants
+- Maintainable and testable
 
 ---
 
@@ -149,6 +335,7 @@ EMBER isn't "a light-seeking robot." It's a **template for artificial life** tha
 ### The Genome
 
 Each bot has **genetic code** that determines its behavior:
+
 ```cpp
 struct Genome {
     float light_threshold;  // How much light needed to survive (0.0-1.0)
@@ -159,18 +346,21 @@ struct Genome {
 ```
 
 **These genes determine everything:**
+
 - Bot with `threshold = 0.2` thrives in dim light
 - Bot with `threshold = 0.8` needs bright light to survive
 - Bot with `efficiency = 1.5` extracts more energy from same photons
 - Bot with `efficiency = 0.5` is inefficient, struggles even in good light
 
-**No two bots are identical** (genes randomized on first boot).
+**No two bots are identical** (genes randomized on first boot, then saved to flash).
 
 ### The Life Cycle
-```
+
+```txt
 BIRTH
   ↓
 energy = 100
+genome loaded from flash (or randomized if new)
   ↓
 ┌─────────────────────┐
 │                     │
@@ -187,14 +377,17 @@ energy = 100
 └─────────────────────┘
        ↑ │
        └─┘ (loop while alive)
+
+(genome persists in flash across reboots)
 ```
 
 ### Fitness
 
-**Fitness = survival time**
+## Fitness = survival time
 
 The longer a bot stays alive in a given environment, the better its genes are suited to that environment.
-```
+
+```txt
 Arena with desk lamp:
   Bot #3 (threshold=0.3, efficiency=1.2) → survives 3600s
   Bot #7 (threshold=0.7, efficiency=0.9) → survives 120s
@@ -203,27 +396,31 @@ Bot #3 has higher fitness → its genes should propagate
 ```
 
 ### Evolution
-```
-Generation 0: Random genomes
+
+```txt
+Generation 0: Random genomes (saved to flash)
     ↓
-Run experiment (measure fitness)
+Run experiment (measure fitness via web dashboard or API)
     ↓
 Identify top 3 survivors
     ↓
-Copy their genes to the 6 dead bots
+Copy their genes to the 6 dead bots (via web or serial)
     ↓
 Add small mutations (±10%)
+    ↓
+Save all genomes to flash
     ↓
 Generation 1: Partially adapted genomes
     ↓
 Repeat...
     ↓
-Generation 10: Fully adapted genomes
+Generation 10: Fully adapted genomes (all saved)
 ```
 
 **You will literally watch the population adapt to your specific lighting conditions.**
 
 Different environments produce different optimal genomes:
+
 - **Bright lab** → low thresholds, any efficiency
 - **Dim office** → very low thresholds, high efficiency required
 - **Variable window light** → medium thresholds, high efficiency (generalists)
@@ -241,8 +438,8 @@ Different environments produce different optimal genomes:
 | RGB LED (common cathode) | 1 | $0.50 |
 | Resistors (10kΩ, 220Ω) | 5 | $0.50 |
 | Buck converter | 1 | $2 |
-| 18650 batteries | 2 | $8 |
-| Battery holder | 1 | $2 |
+| 3.7V 2000mAh LiPo Battery | 2 | $10 |
+| Velcro strap/tape | 1 | $1 |
 | Breadboard/protoboard | 1 | $3 |
 | Wires, connectors | misc | $2 |
 | **Total per bot** | | **~$25** |
@@ -250,6 +447,7 @@ Different environments produce different optimal genomes:
 ### Full Mobile Build (v0.2+)
 
 Add to above:
+
 - TT motors (2) - $4
 - H-bridge motor driver - $3
 - HC-SR04 ultrasonic - $2
@@ -266,310 +464,366 @@ Add to above:
 
 1. **Install Arduino IDE** (1.8.19+ or 2.x)
 2. **Add ESP32 board support:**
-```
+
+```txt
    File → Preferences → Additional Board Manager URLs:
    https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
 ```
+
 3. **Install ESP32 boards:**
-```
+
+```txt
    Tools → Board → Boards Manager → Search "ESP32" → Install
 ```
+
 4. **Select board:**
-```
+
+```txt
    Tools → Board → ESP32 Dev Module
    Tools → Upload Speed → 115200
 ```
 
-### Flashing the Code
+### Required Libraries
 
-1. Open `ember_v0.1_light.ino`
-2. **Change bot_id** (critical - each bot needs unique ID):
-```cpp
-   Genome genome = {
-       .light_threshold = 0.5,
-       .efficiency = 1.0,
-       .bot_id = 0,  // ← CHANGE THIS (0-8 for 9 bots)
-       .generation = 0
-   };
-```
-3. Connect ESP32 via USB
-4. Click Upload (**→** button)
-5. Wait for "Done uploading"
-6. Open Serial Monitor (115200 baud)
+All libraries are included with ESP32 core:
+
+- WiFi (built-in)
+- ESPmDNS (built-in)
+- WebServer (built-in)
+- ArduinoOTA (built-in)
+- Preferences (built-in)
+
+**No external library installation needed!**
 
 ---
 
 ## Serial Commands
 
-Interact with your bot via Serial Monitor:
-```
+Interact with your bot via **Serial Monitor** or **Web Interface**:
+
+### Genome Commands
+
+```txt
 genome          → Display current genetic code
-stats           → Show energy, light, alive time
-mutate          → Apply random mutation (±10%)
-reset           → Reset energy to 100 (keep genome)
-randomize       → Generate new random genome
+mutate          → Apply random mutation (±10%) and save to flash
+randomize       → Generate new random genome and save
 threshold X     → Manually set light_threshold (0.0-1.0)
 efficiency X    → Manually set efficiency (0.5-1.5)
+id X            → Set bot_id (0-8)
+```
+
+### Life Commands
+
+```txt
+stats           → Show energy, light, alive time, IP address
+reset           → Reset energy to 100 (keep genome)
+```
+
+### Storage Commands (New)
+
+```txt
+save            → Save current genome to flash immediately
+clear           → Clear all saved preferences (genome reset on next boot)
+```
+
+### Sensor Commands (New)
+
+```txt
+sensors         → Show all sensor readings (light L/R, ultrasonic, raw ADC)
+```
+
+### Network Commands (New)
+
+```txt
+wifi            → Show WiFi status, IP, signal strength, hostname, web URL
+```
+
+### Utility Commands
+
+```txt
+led             → Test LED colors (cycles through R/G/B/W)
 help            → Show all commands
 ```
 
 ### Example Session
-```
+
+```txt
 > genome
 =================================
 Bot ID: 3
-Generation: 0
+Generation: 5
 Light Threshold: 0.347
 Efficiency: 1.123
 =================================
 
 > mutate
-Genome mutated!
+Genome mutated and saved!
 =================================
 Bot ID: 3
-Generation: 1
+Generation: 6
 Light Threshold: 0.381
 Efficiency: 1.089
 =================================
 
-> stats
-Light: 0.512 | Energy: 73.2 | Alive: 342s | Status: ALIVE
+> wifi
+--- WiFi Status ---
+Connected: Yes
+SSID: MyNetwork
+IP: 192.168.1.50
+RSSI: -67 dBm
+Hostname: ember-bot-3.local
+Web: http://ember-bot-3.local/
+-------------------
+
+> save
+Genome saved to flash!
 ```
 
 ---
 
 ## Understanding LED States
 
-| LED Color | Pattern | Meaning | Energy | Action |
-|-----------|---------|---------|--------|--------|
+| LED Color | Pattern | Meaning | Energy | Context |
+|-----------|---------|---------|--------|---------|
+| ⚪ White | 3 flashes | Boot | 100 | System initialized |
+| 🔵 Blue | Slow pulse | Connecting | - | WiFi connecting |
+| 🔵 Blue | 3 flashes | Connected | - | WiFi successful |
+| 🟡 Yellow | 3 flashes | No WiFi | - | WiFi failed (offline mode) |
+| 🟡 Yellow | 1 flash | Reconnecting | - | WiFi reconnect attempt |
+| 🟣 Purple | Pulse | OTA Update | - | Uploading new code |
+| 🟢 Green | 5 flashes | OTA Success | - | Upload complete |
+| 🔴 Red | 10 flashes | OTA Failed | - | Upload error |
 | 🟢 Green | Solid bright | Thriving | 80-100 | Gaining energy fast |
 | 🟢 Green | Solid dim | Healthy | 50-79 | Gaining energy slowly |
 | 🔴 Red | Slow flash (1Hz) | Struggling | 20-49 | Losing energy slowly |
 | 🔴 Red | Fast flash (5Hz) | Critical | 1-19 | About to die |
 | ⚫ Off | No light | Dead | 0 | Energy depleted |
-| ⚪ White | 3 flashes | Boot | 100 | System initialized |
 
 **Flash rate increases as energy drops** - visual urgency signal.
 
 ---
 
-## Example Experiments
-
-### Experiment 1: Survival Test
-
-**Goal:** Verify basic life functions work
-
-**Setup:**
-1. Fully charge bot
-2. Place in room with stable light
-3. Start timer
-
-**Expected results:**
-- Bright room (>0.6 light): survives indefinitely
-- Dim room (0.3-0.6): depends on genome
-- Dark (<0.1): dies in ~16 minutes
-
-**Success criteria:** Bot behavior matches expectations based on genome
-
----
-
-### Experiment 2: Threshold Test
-
-**Goal:** Understand how `light_threshold` affects survival
-
-**Setup:**
-1. Set bot to known genome: `threshold 0.5` + `efficiency 1.0`
-2. Place in adjustable lighting (dimmer switch)
-3. Slowly decrease light level
-
-**Expected results:**
-- Light > 0.5: green LED, energy rises
-- Light = 0.5: energy stable
-- Light < 0.5: red LED, energy falls
-
-**Success criteria:** Transition occurs exactly at threshold value
-
----
-
-### Experiment 3: Simple Evolution
-
-**Goal:** Demonstrate natural selection in 3 generations
-
-**Setup:**
-1. Build 3 bots with random genomes
-2. Place all in same environment (desk lamp)
-3. Record survival time for each
-4. Copy best genome to other two bots
-5. Mutate slightly
-6. Repeat
-
-**Expected results:**
-- Gen 0: Wide variation in survival (random genes)
-- Gen 1: Less variation (all from same parent)
-- Gen 2: Population adapts to lamp brightness
-- Gen 3: All three survive similarly (convergence)
-
-**Success criteria:** Generation 3 survival time > Generation 0 average
-
----
-
-### Experiment 4: Environmental Adaptation
-
-**Goal:** Show same genome fails in different environments
-
-**Setup:**
-1. Breed bot optimized for bright light (threshold ≈ 0.7)
-2. Test in three environments:
-   - Bright: under desk lamp
-   - Medium: room light
-   - Dark: covered box
-
-**Expected results:**
-- Bright: survives well (optimized for this)
-- Medium: struggles or dies (below threshold)
-- Dark: dies quickly (no light at all)
-
-**Success criteria:** Same genome, different outcomes - proves fitness is environmental
-
----
-
 ## Troubleshooting
 
-### Bot Dies Immediately
+### WiFi Issues
 
-**Problem:** Energy drops to 0 within seconds, even in bright light
+**Problem:** Bot won't connect to WiFi
 
-**Most likely cause:** Random `light_threshold` higher than available light
+**Fixes:**
+
+1. Check SSID/password are correct (case-sensitive)
+2. Ensure 2.4GHz network (ESP32 doesn't support 5GHz)
+3. Router must allow mDNS/Bonjour
+4. Try moving closer to router
+5. Check Serial Monitor for error messages
+
+---
+
+**Problem:** Can't access `ember-bot-0.local`
+
+**Fixes:**
+
+1. Try IP address instead (shown in Serial Monitor)
+2. **Windows:** Install [Bonjour Print Services](https://support.apple.com/kb/DL999)
+3. **Linux:** Install `avahi-daemon` (`sudo apt install avahi-daemon`)
+4. **Mac:** Should work out of box
+5. Check firewall isn't blocking port 80
+
+---
+
+**Problem:** OTA not showing in Arduino IDE
+
+**Fixes:**
+
+1. Wait 30 seconds after bot boots
+2. Check bot is on same network as computer
+3. Refresh port list (close and reopen Tools → Port)
+4. Check firewall isn't blocking port 3232
+5. Try IP address: `ember-bot-0.local` or `192.168.1.50`
+
+---
+
+### Hardware Issues
+
+**Problem:** Bot dies immediately even in bright light
 
 **Fix:**
-```
+
+```txt
+>calibrate please ensure LDRs are wired correctly:
 threshold 0.3
 reset
 ```
 
+Or use web interface: Set threshold lower, click "Reset Life"
+
 ---
 
-### LED Stuck on One Color
-
-**Problem:** LED only shows red, green, or blue - never changes
-
-**Most likely cause:** One GPIO pin disconnected or wrong pin number in code
+**Problem:** LED stuck on one color
 
 **Fix:**
+
 1. Check wiring: GPIO23=red, GPIO22=green, GPIO21=blue
-2. Test each color individually via serial commands
+2. Serial command: `led` to test colors
 3. Verify common cathode connected to GND
 
 ---
 
-### Light Sensor Not Responding
-
-**Problem:** Light reading stuck at 0.0 or 1.0 regardless of lighting
-
-**Most likely cause:** Voltage divider wired incorrectly
+**Problem:** Light sensor not responding
 
 **Fix:**
+
 1. Verify circuit: 3.3V → LDR → GPIO34/35 → 10kΩ → GND
-2. Measure voltage at GPIO with multimeter (should be 0-3.3V)
-3. If always 0V: check GND connection
-4. If always 3.3V: check resistor to GND exists
+2. Serial command: `sensors` to check raw values
+3. Measure voltage at GPIO (should be 0-3.3V)
 
 ---
 
-### Serial Monitor Gibberish
-
-**Problem:** Serial output shows random characters
-
-**Most likely cause:** Wrong baud rate
+**Problem:** Bot resets randomly
 
 **Fix:**
-1. Set Serial Monitor to 115200 baud
-2. Press reset button on ESP32
-3. Should see clean boot message
 
----
-
-### Bot Resets Randomly
-
-**Problem:** Bot reboots unexpectedly, loses energy count
-
-**Most likely cause:** Battery voltage too low or loose power connection
-
-**Fix:**
-1. Charge batteries fully (should read 7.4-8.4V)
-2. Check all GND connections secure
+1. Charge batteries (should be 7.4-8.4V)
+2. Check all GND connections
 3. Add 100µF capacitor across buck converter output
+4. Check Serial Monitor for brownout messages
 
 ---
 
 ## FAQ
 
+### Q: Do I need WiFi for the bot to work?
+
+**A:** No. WiFi is completely optional. If WiFi connection fails or is disabled, the bot continues functioning normally with all core life functions. You just won't have web interface, OTA updates, or remote monitoring. Serial commands still work via USB.
+
+### Q: Can I update the genome via the web interface?
+
+**A:** Yes! The web dashboard has control buttons:
+
+- **🧬 Mutate** = Apply random mutation
+- **🎲 Randomize** = New random genome
+- **💾 Save** = Write current genome to flash immediately
+
+All changes are automatically saved to flash.
+
+### Q: What happens if WiFi drops during an experiment?
+
+**A:** Life continues completely normally. The bot checks WiFi every 30 seconds and attempts to reconnect automatically. All core functions (sensing, energy management, LED display) are independent of network status. You'll see a brief yellow LED flash when reconnecting.
+
+### Q: How do I monitor all 9 bots at once?
+
+**A:** Three options:
+
+1. **Browser tabs:** Open 9 tabs to each bot's dashboard (auto-refreshes every 2s)
+2. **JSON API:** Use a script to poll `/api/stats` endpoint
+3. **Serial Monitor:** Connect to each bot via USB (displays stats every second)
+
+See the JSON API section above for a Python monitoring example.
+
+### Q: Can I change WiFi password without USB?
+
+**A:** Yes, via OTA:
+
+1. Edit code with new credentials
+2. Upload via network port
+3. Bot reboots and connects to new network
+
+**Warning:** If new credentials are wrong, you'll need USB to fix it.
+
+### Q: Does the genome persist across reboots?
+
+**A:** Yes! Every mutation (via web or serial `mutate` command) automatically saves to ESP32 flash memory. Manual save is also available via serial `save` command or web "Save Genome" button. The genome survives:
+
+- Power loss
+- Reboots
+- Code re-uploads (unless you use `clear` command)
+- Battery changes
+
 ### Q: Why only light? Why not other sensors?
 
-**A:** v0.1 uses light to prove the concept works. The same code works with ANY sensor - just swap the `readLight()` function. Future versions will have multi-sensory organisms.
+**A:** v0.1 uses light to prove the concept works. The HAL makes it trivial to swap sensors - just replace the `LightSensor` class. Future versions will have multi-sensory organisms. The life equation stays the same.
 
 ### Q: Why can't it move in v0.1?
 
-**A:** Movement adds complexity. v0.1 focuses on the absolute minimum: sense → energy → survival. Movement comes in v0.2 once the basic pattern is proven.
+**A:** Movement adds complexity. v0.1 focuses on proving the minimal pattern: sense → energy → survival. Movement comes in v0.2 once the basic pattern is validated. The motors are wired and ready (just disabled in code).
 
 ### Q: How is this different from a light-seeking robot?
 
-**A:** A light-seeking robot is pre-programmed to seek light. EMBER bots have random genes - some will happen to survive, others won't. We don't tell them what to do, we create selection pressure and let evolution find the solution.
+**A:** A light-seeking robot is pre-programmed: "if light_detected, move_toward_light". EMBER bots have random genes - some will happen to survive, others won't. We create selection pressure and let evolution find the solution. The difference is **emergence vs programming**.
 
 ### Q: Do I need 9 bots?
 
-**A:** For meaningful evolution experiments, yes. You need genetic diversity (multiple genomes), selection (some live, some die), and breeding (copy winning genes). With fewer bots, there's less variation and slower convergence.
+**A:** For meaningful evolution, yes. You need:
+
+- Genetic diversity (multiple genomes)
+- Selection (some live, some die)
+- Breeding (copy winning genes)
+
+With fewer bots, there's less variation and slower convergence. 3 bots is minimum, 9 is ideal, 20+ is even better.
 
 ### Q: Can I run this in simulation?
 
-**A:** You *could*, but the point is to prove emergence works in **physical reality**, not just in code. Simulations make assumptions. Hardware doesn't lie.
+**A:** You *could*, but you'd miss the point. EMBER proves emergence works in **physical reality**. Simulations make assumptions and skip constraints. Hardware follows real physics - photons, thermodynamics, battery chemistry. **Physical constraints force honesty.**
 
 ### Q: What if all my bots die?
 
-**A:** Then your environment is too harsh for ANY genome in the current population. Either:
+**A:** Environment is too harsh. Either:
+
 1. Add more light
-2. Lower ENERGY_DECAY constant in code
-3. Increase ENERGY_GAIN constant in code
-4. Randomize all genomes again (wider search space)
+2. Lower `ENERGY_DECAY` in code
+3. Increase `ENERGY_GAIN` in code
+4. Use web interface to randomize all genomes (wider search)
 
 ### Q: What if all my bots survive forever?
 
-**A:** Then your environment has no selection pressure. Either:
+**A:** No selection pressure. Either:
+
 1. Reduce light intensity
 2. Create variable light (shade part of arena)
-3. Increase ENERGY_DECAY constant
-4. Proceed to v0.2 (movement + competition)
+3. Increase `ENERGY_DECAY`
+4. Add competition (limited "food" spots)
+5. Proceed to v0.2 (movement + resource seeking)
 
 ### Q: How long does a generation take?
 
 **A:** Depends on selection pressure:
-- High pressure (many deaths): 10-30 minutes
-- Low pressure (slow energy drain): 1-2 hours
-- No pressure (all survive): infinite (need to change environment)
+
+- High pressure (harsh environment): 10-30 minutes
+- Medium pressure (balanced): 1-2 hours
+- Low pressure (easy environment): hours to never
+
+Monitor via web dashboard to see fitness in real-time.
 
 ### Q: What happens at Generation 100?
 
-**A:** Population will be highly adapted to your specific environment. Changing lighting even slightly will cause deaths - they've specialized. This is **niche adaptation** emerging from simple rules.
+**A:** Population becomes highly specialized to your exact environment. Even small lighting changes cause deaths. This is **niche adaptation** - the same thing that makes pandas dependent on bamboo or koalas on eucalyptus. It emerges from simple rules.
 
 ### Q: Can I cross-breed bots?
 
-**A:** Not in v0.1 (you manually copy genes via serial). v0.4 will have ESP-NOW communication for automatic gene sharing. But you can simulate it:
-1. Take `threshold` from Bot A
-2. Take `efficiency` from Bot B
-3. Set new bot to combined genome
-4. This is **genetic crossover**
+**A:** Manual crossover in v0.1:
+
+1. View genome of Bot A via web interface
+2. View genome of Bot B
+3. Take `threshold` from A, `efficiency` from B
+4. Use serial commands to set combined genome on Bot C
+5. Save to flash
+
+v0.4 will have ESP-NOW communication for automatic genetic exchange.
 
 ### Q: Is this actually alive?
 
-**A:** Philosophically? That's your call. Scientifically, it exhibits:
-- Homeostasis (energy regulation)
-- Metabolism (light → energy conversion)
-- Growth (energy accumulation)
-- Response to stimuli (phototaxis in v0.2+)
-- Reproduction (copy genes to offspring)
-- Evolution (adaptation over generations)
+**A:** Scientifically, it exhibits:
 
-**It follows the same life equation as bacteria, plants, and you.**
+- **Homeostasis** (energy regulation)
+- **Metabolism** (light → energy conversion)
+- **Growth** (energy accumulation)
+- **Response to stimuli** (light detection, phototaxis in v0.2+)
+- **Reproduction** (gene copying to offspring)
+- **Evolution** (adaptation over generations)
+
+It follows the same life equation as bacteria, plants, and you.
+
+Philosophically? **You decide.**
 
 ---
 
@@ -579,8 +833,8 @@ reset
 
 - **Biology:** Evolution by natural selection (real, not simulated)
 - **Physics:** Energy conservation, photovoltaic effect, thermodynamics
-- **Computer Science:** Genetic algorithms, emergence, state machines
-- **Engineering:** Embedded systems, sensor integration, power management
+- **Computer Science:** Genetic algorithms, emergence, HAL design, web APIs
+- **Engineering:** Embedded systems, sensor integration, OTA updates
 - **Philosophy:** What is life? What is intelligence? What is consciousness?
 
 ### For Researchers
@@ -588,14 +842,16 @@ reset
 - **Validation:** Does emergence work in hardware? (Answer: Yes)
 - **Platform:** Test evolutionary theories with physical agents
 - **Experiments:** Multi-sensory organisms, specialization, swarm intelligence
-- **Extensions:** Add more sensors, more genes, more complexity - pattern holds
+- **Extensions:** Add sensors/genes/complexity - pattern holds
+- **Data:** JSON API enables rigorous data collection
 
 ### For Makers
 
 - **Framework:** Reusable life template for any sensor type
-- **Learning:** Practical embedded systems project with deep concepts
-- **Extension:** Build on this - add behaviors, communication, memory
-- **Philosophy:** Anti-gatekeeping - all designs MIT licensed, share freely
+- **Learning:** Practical embedded systems with deep concepts
+- **HAL Design:** Clean abstraction layer patterns
+- **Network Integration:** OTA + web interface + API
+- **Philosophy:** Anti-gatekeeping - all designs MIT licensed
 
 ---
 
@@ -603,27 +859,32 @@ reset
 
 ### After You Build One Bot
 
-1. **Test basic functions** - verify sensing, energy, life/death works
+1. **Test basic functions** - sensing, energy, life/death
 2. **Try serial commands** - mutate, reset, observe changes
-3. **Run survival tests** - different lighting, different thresholds
-4. **Document your findings** - which genomes work in your environment
+3. **Access web dashboard** - see live stats
+4. **Run survival tests** - different lighting, different thresholds
+5. **Test OTA** - make code change, upload wirelessly
+6. **Document findings** - which genomes work in your environment
 
 ### After You Build Nine Bots
 
 1. **Read EVOLUTION_GUIDE.md** - comprehensive evolution protocol
 2. **Create test arena** - controlled environment with adjustable light
-3. **Run generation 0** - random genomes, measure fitness
-4. **Select and breed** - copy winners, mutate, repeat
-5. **Track lineages** - which bots descended from which survivors
-6. **Analyze results** - what genome emerged as optimal?
+3. **Set up monitoring** - web dashboards or API script
+4. **Run generation 0** - random genomes, measure fitness
+5. **Select and breed** - copy winners (via web or serial), mutate, save
+6. **Track lineages** - which bots descended from which survivors
+7. **Analyze results** - what genome emerged as optimal?
+8. **Export data** - JSON API enables long-term tracking
 
 ### After Evolution Works
 
-1. **Modify environment** - change light intensity, observe re-adaptation
+1. **Modify environment** - change light, observe re-adaptation
 2. **Add constraints** - limited "food" (light spots), force competition
-3. **Cross environments** - move adapted bots to new arena, watch them struggle
+3. **Cross environments** - move adapted bots to new arena
 4. **Build v0.2** - enable movement, watch phototaxis emerge
 5. **Publish results** - share your data, help build knowledge
+6. **Extend platform** - swap sensors, add genes, explore
 
 ---
 
@@ -632,6 +893,7 @@ reset
 EMBER is **open source** (MIT License) and **anti-gatekeeping**.
 
 **You can:**
+
 - Build it
 - Modify it
 - Extend it
@@ -641,11 +903,13 @@ EMBER is **open source** (MIT License) and **anti-gatekeeping**.
 - Improve it
 
 **Please contribute:**
-- Document your experiments (PRs welcome)
-- Share your modifications (especially sensor swaps)
-- Report issues (GitHub issues)
-- Improve documentation (always needed)
-- Build tools (data logging, analysis, visualization)
+
+- Document experiments (PRs welcome)
+- Share modifications (sensor swaps, new features)
+- Report issues (GitHub)
+- Improve documentation
+- Build tools (monitoring, analysis, visualization)
+- Share your data (evolution results)
 
 **No permission needed. Just build and share.**
 
@@ -665,17 +929,20 @@ You can't handwave thermodynamics. You can't skip circuit design. You can't pret
 
 EMBER demonstrates the **Mavric Pattern** (three-layer emergence):
 
-**Layer 1: Physics**
+## Layer 1: Physics
+
 - Photons → voltage
 - Transistors → current
 - Battery → chemical energy
 
-**Layer 2: Life**
+## Layer 2: Life
+
 - Sensor → perception
 - Energy → survival
 - Death → selection
 
-**Layer 3: Evolution**
+## Layer 3: Evolution
+
 - Variation → diversity
 - Selection → pressure
 - Inheritance → adaptation
@@ -699,14 +966,16 @@ Build this. Improve it. Share your improvements. Someone will improve those. The
 EMBER is **Forge Theory in silicon**.
 
 Every Forge simulation demonstrates the same pattern:
+
 - Simple rules → complex behavior
-- Local interactions → global patterns  
+- Local interactions → global patterns
 - Random variation → selected adaptation
 - Three-layer emergence architecture
 
 **EMBER proves this works in physical reality.**
 
 When you watch an EMBER bot die in shadow and thrive in light, you're watching the same emergence as:
+
 - **TreeForge:** cells → branches → forest
 - **EcoForge:** agents → populations → ecosystems
 - **NeuroForge:** neurons → patterns → thought
@@ -719,6 +988,7 @@ When you watch an EMBER bot die in shadow and thrive in light, you're watching t
 ## Resources
 
 ### Documentation
+
 - `EMBER_MANIFEST.md` - Philosophy and core concepts
 - `EMBER_v0.1_SPEC.md` - Technical specifications
 - `EMBER_BUILD_GUIDE.md` - Assembly instructions
@@ -726,15 +996,18 @@ When you watch an EMBER bot die in shadow and thrive in light, you're watching t
 - `EMBER_ROADMAP.md` - Future versions
 
 ### Code
-- `ember_v0.1_light.ino` - Main firmware
-- `/tools/` - Helper scripts for logging, analysis, batch flashing
+
+- `ember_v0.1_hal_ota.ino` - Main firmware (this version)
+- `/tools/` - Helper scripts for logging, analysis, monitoring
 
 ### Hardware
+
 - `/hardware/circuit_diagram.png` - Wiring schematic
 - `/hardware/parts_list.md` - Component sourcing
-- `/hardware/chassis_design.dxf` - Laser-cut chassis (optional)
+- `/hardware/chassis_design.dxf` - Laser-cut chassis
 
 ### Community
+
 - GitHub Issues - bug reports, feature requests
 - Discussions - share experiments, ask questions
 - Pull Requests - contribute improvements
@@ -744,8 +1017,9 @@ When you watch an EMBER bot die in shadow and thrive in light, you're watching t
 ## License
 
 **MIT License** - Build freely, share openly
-```
-Copyright (c) 2024 James @ Giblets Creations
+
+```txt
+Copyright (c) 2025 James @ Giblets Creations
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -769,6 +1043,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
 **Inspiration:** 8 years of WHEELIE project + decades of cross-domain pattern recognition
 
 **Standing on the shoulders of:**
+
 - Darwin (natural selection)
 - Von Neumann (self-replicating machines)
 - Brooks (behavior-based robotics)
@@ -787,9 +1062,9 @@ Not in simulation. Not in theory. In physical hardware following real physical l
 
 Build one. Watch it live or die based on its genome and environment.
 
-Build nine. Watch evolution happen in real-time.
+Build nine. Watch evolution happen in real-time. Monitor them via web dashboard.
 
-Change the environment. Watch them adapt.
+Change the environment. Watch them adapt. Track it with the JSON API.
 
 Swap the sensor. Watch the same pattern work with different resources.
 
@@ -805,13 +1080,15 @@ From simple rules. In silicon and photons.
 
 **Ready?**
 
-Flash the code. Connect the battery. Place it in light.
+1. Configure WiFi (or skip for offline mode)
+2. Flash the code
+3. Connect the battery
+4. Open `http://ember-bot-0.local/`
+5. Place it in light
 
 **Watch what emerges.**
 
 ---
 
-*EMBER v0.1 - Life From Light*  
-*Created 2024*  
-*Part of the Forge Theory Project*  
-*gibletscreations.com | shaped-maker-3d @ cults3d*
+*EMBER v0.1 HAL+OTA Edition - Life From Light*  
+*Create
