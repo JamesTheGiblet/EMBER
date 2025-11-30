@@ -547,8 +547,8 @@ void loop() {
 
 ```txt
 VCC  → 5V (from buck converter OUT+)
-TRIG → ESP32 GPIO25
-ECHO → ESP32 GPIO26
+TRIG → ESP32 GPIO26
+ECHO → ESP32 GPIO25
 GND  → GND
 ```
 

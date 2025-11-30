@@ -334,8 +334,8 @@ motors.disable();             // Power down (v0.1 default)
 
 ```cpp
 namespace HAL::Pins {
-    constexpr int US_TRIGGER = 25;   // GPIO25
-    constexpr int US_ECHO = 26;     // GPIO26
+    constexpr int US_TRIGGER = 26;   // GPIO26
+    constexpr int US_ECHO = 25;     // GPIO25
 }
 ```
 

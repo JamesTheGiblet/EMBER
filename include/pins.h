@@ -9,15 +9,23 @@
 
 namespace Pins {
 
+
     // -- Light Sensors (LDRs) --
     // Note: Must be ADC1 pins (GPIOs 32-39)
-    constexpr int LDR_LEFT  = 34;
-    constexpr int LDR_RIGHT = 35;
+    constexpr int LDR_LEFT  = 35;
+    constexpr int LDR_RIGHT = 34;
 
     // -- RGB LED --
-    constexpr int LED_RED   = 23;
-    constexpr int LED_GREEN = 22;
-    constexpr int LED_BLUE  = 21;
+    constexpr int LED_RED   = 14;
+    constexpr int LED_GREEN = 33;
+    constexpr int LED_BLUE  = 12;
+
+    // -- Ultrasonic Sensor --
+    constexpr int US_TRIGGER = 26;
+    constexpr int US_ECHO    = 25;
+
+    // -- Power Management --
+    constexpr int BATTERY_SENSE = 32; // ADC pin for battery voltage
 
     // -- Motor Driver (supports both L9110S and TB6612FNG) --
     constexpr int MOTOR_A_IN1 = 15; // Left Motor IN1
