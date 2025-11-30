@@ -673,7 +673,7 @@ Or use web interface: Set threshold lower, click "Reset Life"
 
 **Fix:**
 
-1. Check wiring: GPIO23=red, GPIO22=green, GPIO21=blue
+1. Check wiring: GPIO14=red, GPIO33=green, GPIO12=blue
 2. Serial command: `led` to test colors
 3. Verify common cathode connected to GND
 

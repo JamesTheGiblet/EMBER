@@ -410,10 +410,10 @@ void loop() {
 
 **Circuit for common cathode LED:**
 
-```txt
-GPIO23 ──[220Ω]── LED RED ──┐
-GPIO22 ──[220Ω]── LED GRN ──┼── GND
-GPIO13 ──[220Ω]── LED BLU ──┘
+```
+GPIO14 ──[220Ω]── LED RED ──┐
+GPIO33 ──[220Ω]── LED GRN ──┼── GND
+GPIO12 ──[220Ω]── LED BLU ──┘
 ```
 
 **Assembly:**
@@ -422,7 +422,7 @@ GPIO13 ──[220Ω]── LED BLU ──┘
 
 <!-- end list -->
 
-```txt
+```
    Looking at LED (flat side = cathode side):
    
    Longest pin = Common cathode (to GND)
@@ -431,39 +431,39 @@ GPIO13 ──[220Ω]── LED BLU ──┘
     │   │   │   │
 ```
 
-1. **Solder resistors:**
-       - Cut resistor legs to \~5mm
-       - Solder 220Ω to each color pin (not cathode)
-       - Leave cathode leg bare
+2. **Solder resistors:**
+      - Cut resistor legs to \~5mm
+      - Solder 220Ω to each color pin (not cathode)
+      - Leave cathode leg bare
 
-2. **Solder wires:**
-       - Red wire to RED resistor → GPIO23
-       - Green wire to GREEN resistor → GPIO22
-       - Blue wire to BLUE resistor → GPIO21
-       - Black wire to cathode → GND
+3. **Solder wires:**
+      - Red wire to RED resistor → GPIO14
+      - Green wire to GREEN resistor → GPIO33
+      - Blue wire to BLUE resistor → GPIO12
+      - Black wire to cathode → GND
 
-3. **Mount LED:**
-       - Drill 5mm hole in top of chassis
-       - Push LED through (resistors should be below)
-       - Secure with hot glue from underneath
-       - LED should be visible from all angles
+4. **Mount LED:**
+      - Drill 5mm hole in top of chassis
+      - Push LED through (resistors should be below)
+      - Secure with hot glue from underneath
+      - LED should be visible from all angles
 
 **Testing:**
 
 ```cpp
 void setup() {
-  pinMode(23, OUTPUT);
-  pinMode(22, OUTPUT);
-  pinMode(21, OUTPUT);
+  pinMode(14, OUTPUT);
+  pinMode(33, OUTPUT);
+  pinMode(12, OUTPUT);
 }
 
 void loop() {
-  digitalWrite(23, HIGH); delay(1000); // Red
-  digitalWrite(23, LOW);
-  digitalWrite(22, HIGH); delay(1000); // Green
-  digitalWrite(22, LOW);
-  digitalWrite(21, HIGH); delay(1000); // Blue
-  digitalWrite(21, LOW);
+  digitalWrite(14, HIGH); delay(1000); // Red
+  digitalWrite(14, LOW);
+  digitalWrite(33, HIGH); delay(1000); // Green
+  digitalWrite(33, LOW);
+  digitalWrite(12, HIGH); delay(1000); // Blue
+  digitalWrite(12, LOW);
 }
 ```
 
