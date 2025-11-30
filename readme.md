@@ -1,5 +1,16 @@
 # EMBER v0.1 - Life From Light
 
+## Power Management System
+
+EMBER v0.1 includes a battery monitoring and power management system:
+
+- **Voltage divider circuit** for safe battery voltage sensing (20kΩ/10kΩ resistors)
+- **ADC pin GPIO32** for battery sense
+- **Automatic power modes**: NORMAL, ECONOMY, LOW, CRITICAL, SHUTDOWN (LED color and feature scaling)
+- Protects batteries and maximizes runtime
+
+See the [Build Guide](docs/EMBER_BUILD_GUIDE.md#power-management-system-battery-monitoring) for wiring instructions, resistor values, and details on power mode logic.
+
 ## The Universal Life Pattern Implemented in Hardware
 
 ```txt
@@ -60,21 +71,21 @@ Watch it live. Watch it die. Watch evolution happen in real-time.
    genome.bot_id = 0; // UNIQUE for each bot!
 ```
 
-2. **Flash the code** to ESP32 (change `bot_id` to unique number 0-8)
+1. **Flash the code** to ESP32 (change `bot_id` to unique number 0-8)
 
-3. **Connect battery** and power on
+2. **Connect battery** and power on
 
-4. **Watch LED sequence**:
+3. **Watch LED sequence**:
    - White flash 3× = Boot complete
    - Blue pulse = Connecting to WiFi
    - Blue flash 3× = WiFi connected
    - Then: Green (thriving) / Red (dying) / Off (dead)
 
-5. **Access web dashboard** (if WiFi connected):
+4. **Access web dashboard** (if WiFi connected):
    - Browser: `http://ember-bot-0.local/`
    - Auto-refreshes every 2 seconds with live stats
 
-6. **Or use Serial Monitor** (115200 baud):
+5. **Or use Serial Monitor** (115200 baud):
 
 ```txt
    Light: 0.512 | Energy: 73.2 | Alive: 342s | Status: ALIVE | IP: 192.168.1.50

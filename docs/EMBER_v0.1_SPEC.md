@@ -533,7 +533,7 @@ void showState() {
 
 **Voltage Divider Output:**
 
-```
+```txt
          3.3V
           │
         [LDR]  ← Varies with light
@@ -570,7 +570,7 @@ int raw_right = lightSensor.readRawRight();  // 0-4095
 
 **Automated via Serial Commands:**
 
-```
+```txt
 sensors    → Shows all sensor readings (normalized + raw)
 ```
 
@@ -608,7 +608,7 @@ void loop() {
 
 ### Fitness Function
 
-```
+```txt
 fitness = alive_time (in seconds)
 
 Higher fitness = better adapted genome for environment
@@ -701,7 +701,7 @@ with open('fitness_log.csv', 'w') as f:
 
 ### Output Format
 
-```
+```txt
 =================================
 Bot ID: 3
 Generation: 5
@@ -727,7 +727,7 @@ Web: http://ember-bot-3.local/
 
 ### Chassis Layout
 
-```
+```txt
                     [Front]
                       ___
                      |US |  ← Ultrasonic sensor
@@ -950,7 +950,7 @@ clear    // If corrupted, clear and start fresh
 
 ## Files in This Release
 
-```
+```txt
 /ember/v0.1/
   ├── ember_v0.1_hal_ota.ino     # Main code (HAL+OTA edition)
   ├── EMBER_v0.1_SPEC.md         # This file
@@ -974,20 +974,20 @@ clear    // If corrupted, clear and start fresh
 
 ### Network Features
 
-5. WiFi connects successfully (blue flash 3×)
-6. Web dashboard accessible and auto-refreshes
-7. JSON API returns valid data
-8. OTA updates work (purple LED, green success flash)
-9. Genome persists across reboots (NVS flash)
-10. Bot operates normally when WiFi offline
+1. WiFi connects successfully (blue flash 3×)
+2. Web dashboard accessible and auto-refreshes
+3. JSON API returns valid data
+4. OTA updates work (purple LED, green success flash)
+5. Genome persists across reboots (NVS flash)
+6. Bot operates normally when WiFi offline
 
 ### Evolution Capabilities
 
-11. Serial commands allow gene manipulation and save to flash
-12. Web interface enables remote genome control
-13. Nine bots show genetic diversity
-14. JSON API enables automated fitness tracking
-15. OTA allows simultaneous code updates to all bots
+1. Serial commands allow gene manipulation and save to flash
+2. Web interface enables remote genome control
+3. Nine bots show genetic diversity
+4. JSON API enables automated fitness tracking
+5. OTA allows simultaneous code updates to all bots
 
 **If all 15 criteria met, EMBER v0.1 HAL+OTA is production ready.**
 

@@ -115,7 +115,7 @@ Pins: B-1A, B-1B, GND, VCC, A-1A, A-1B
 - GND: Ground
 - A-1A/A-1B: Motor A control (both digital)
 - B-1A/B-1B: Motor B control (both digital)
-```
+```txt
 
 **TB6612FNG (better quality):**
 
@@ -227,6 +227,56 @@ This section provides the practical wiring connections for the components. For t
        - Should rotate freely
 
 ### Step 3: Install Power System
+
+-----
+
+## Power Management System (Battery Monitoring)
+
+To protect your batteries and maximize runtime, EMBER uses a voltage divider to monitor battery voltage and automatically adjust performance.
+
+### Wiring the Voltage Divider
+
+- **Purpose:** Safely measure battery voltage (2S LiPo, 6.0V–8.4V) using ESP32 ADC pin.
+- **Resistors:** 20kΩ (R1, high side) and 10kΩ (R2, low side)
+- **ADC Pin:** Use GPIO32 (right side, pin 21) for battery sense (do not use GPIO34/35, those are for LDRs)
+
+**Wiring:**
+
+1. Battery + → one leg of 20kΩ resistor (R1)
+2. Other leg of 20kΩ resistor joins one leg of 10kΩ resistor (R2) and also connects to ESP32 GPIO32
+3. Other leg of 10kΩ resistor → Battery - (GND)
+
+**Diagram:**
+
+Battery + → 20kΩ → (join) → 10kΩ → Battery - (GND)
+                        │
+                        └→ ESP32 GPIO32 (ADC)
+
+**Component List:**
+
+| Component | Value | Purpose |
+|-----------|-------|---------|
+| R1        | 20kΩ  | High side |
+| R2        | 10kΩ  | Low side  |
+| ADC Pin   | GPIO32| Battery sense |
+
+### Power Modes (Automatic)
+
+EMBER automatically switches between 5 power modes based on battery voltage:
+
+| Mode      | Voltage Range | LED         | Features           |
+|-----------|--------------|-------------|--------------------|
+| NORMAL    | 7.8–8.4V     | Green       | Full performance   |
+| ECONOMY   | 7.2–7.8V     | Blue        | Reduced features   |
+| LOW       | 6.8–7.2V     | Yellow      | Essential only     |
+| CRITICAL  | 6.4–6.8V     | Red flash   | Survival mode      |
+| SHUTDOWN  | <6.4V        | Red solid   | Battery protection |
+
+The robot will reduce speed, disable non-critical features, and eventually shut down to prevent battery damage.
+
+**Tip:** Always use quality resistors (±1%) and double-check wiring before powering up.
+
+-----
 
 ## CRITICAL: Test before connecting ESP32
 
@@ -360,7 +410,7 @@ void loop() {
 
 **Circuit for common cathode LED:**
 
-```
+```txt
 GPIO23 ──[220Ω]── LED RED ──┐
 GPIO22 ──[220Ω]── LED GRN ──┼── GND
 GPIO13 ──[220Ω]── LED BLU ──┘
@@ -372,7 +422,7 @@ GPIO13 ──[220Ω]── LED BLU ──┘
 
 <!-- end list -->
 
-```
+```txt
    Looking at LED (flat side = cathode side):
    
    Longest pin = Common cathode (to GND)
@@ -381,18 +431,18 @@ GPIO13 ──[220Ω]── LED BLU ──┘
     │   │   │   │
 ```
 
-2. **Solder resistors:**
+1. **Solder resistors:**
        - Cut resistor legs to \~5mm
        - Solder 220Ω to each color pin (not cathode)
        - Leave cathode leg bare
 
-3. **Solder wires:**
+2. **Solder wires:**
        - Red wire to RED resistor → GPIO23
        - Green wire to GREEN resistor → GPIO22
        - Blue wire to BLUE resistor → GPIO21
        - Black wire to cathode → GND
 
-4. **Mount LED:**
+3. **Mount LED:**
        - Drill 5mm hole in top of chassis
        - Push LED through (resistors should be below)
        - Secure with hot glue from underneath
@@ -423,31 +473,31 @@ void loop() {
 
 #### For L9110S Driver
 
-1. **Power connections:**
+**Power connections:**
 
 <!-- end list -->
 
-```
+```txt
    Battery 7.4V → VCC
    GND → GND (shared with ESP32 GND)
 ```
 
-2. **Control connections:**
+**Control connections:**
 
 <!-- end list -->
 
-```
+```txt
    ESP32 GPIO15 → A-1A (Motor A)
    ESP32 GPIO16  → A-1B (Motor A)
    ESP32 GPIO17 → B-1A (Motor B)
    ESP32 GPIO18 → B-1B (Motor B)
 ```
 
-3. **Motor connections:**
+**Motor connections:**
 
 <!-- end list -->
 
-```
+```txt
    Left Motor:  Connect to Motor A output
    Right Motor: Connect to Motor B output
 ```
@@ -456,21 +506,21 @@ void loop() {
 
 #### For TB6612FNG Driver
 
-1. **Power connections:**
+**Power connections:**
 
 <!-- end list -->
 
-```
+```txt
    Battery 7.4V → VM
    ESP32 3.3V → VCC
    GND → GND (shared)
 ```
 
-2. **Control connections:**
+**Control connections:**
 
 <!-- end list -->
 
-```
+```txt
    ESP32 GPIO15 → AIN1
    ESP32 GPIO16 → AIN2
    ESP32 GPIO5  → PWMA
@@ -480,11 +530,11 @@ void loop() {
    ESP32 GPIO13 → STBY (or tie to VCC)
 ```
 
-3. **Motor connections:**
+**Motor connections:**
 
 <!-- end list -->
 
-```
+```txt
    Left Motor:  AO1, AO2
    Right Motor: BO1, BO2
 ```
@@ -495,7 +545,7 @@ void loop() {
 
 **HC-SR04 connections:**
 
-```
+```txt
 VCC  → 5V (from buck converter OUT+)
 TRIG → ESP32 GPIO25
 ECHO → ESP32 GPIO26
@@ -532,7 +582,7 @@ GND  → GND
 
 <!-- end list -->
 
-```
+```txt
    ✓ No exposed wire touching chassis
    ✓ All components secure
    ✓ Battery polarity correct
@@ -563,7 +613,7 @@ This is the most critical step for enabling network features and running swarm e
 
 1. **Open Project Folder:** In VS Code, go to `File > Open Folder...` and select the root `EMBER` project directory. PlatformIO will automatically recognize the `platformio.ini` file.
 
-2. **Edit Configuration:** Open the `src/main.cpp` file.
+2. **Edit Configuration:** Open the `ember_v0.1_hal_ota.ino` file in the project root.
 
 3. **Set WiFi Credentials:** Near the top of the file, find the `CONFIGURATION` block and enter your WiFi network's SSID and password.
 
@@ -583,9 +633,9 @@ This is the most critical step for enabling network features and running swarm e
 
     **IMPORTANT:** Every bot on your network **must** have a unique hostname. The convention is `ember-bot-N`, where N is the bot's ID number.
 
-5. **Set the Bot's Internal ID:** A little further down, in the `GENETIC CODE` section, set the `bot_id`. This number should match the number in the hostname.
+**Set the Bot's Internal ID:** A little further down, in the `GENETIC CODE` section, set the `bot_id`. This number should match the number in the hostname.
 
-    ```cpp
+```cpp
     Genome genome = {
         .light_threshold = 0.5,
         .efficiency = 1.0,
@@ -642,6 +692,7 @@ The bot's LED will turn purple during the update and flash green upon success.
 **BEFORE connecting battery:**
 
 ```
+
 □ All solder joints inspected (no bridges)
 □ No exposed wires touching
 □ Buck converter set to 5.0V
@@ -650,7 +701,8 @@ The bot's LED will turn purple during the update and flash green upon success.
 □ WiFi credentials configured (if using network features)
 □ Bot_id is unique for this bot (0-8)
 □ Hostname is unique (ember-bot-N)
-```
+
+```txt
 
 **Power-on sequence:**
 
@@ -724,7 +776,7 @@ The bot's LED will turn purple during the update and flash green upon success.
 
 ### Step 5: Motor Test (Even Though Disabled)
 
-**IMPORTANT: Test motors work before evolution experiments**
+## IMPORTANT: Test motors work before evolution experiments
 
 The HAL automatically handles your motor driver type, so this test works for both L9110S and TB6612FNG:
 
@@ -742,14 +794,14 @@ The HAL automatically handles your motor driver type, so this test works for bot
    delay(2000);
 ```
 
-2. Each motor should:
+1. Each motor should:
        - Spin forward smoothly
        - Spin backward smoothly
        - Stop completely
 
-3. If motor spins wrong direction, swap motor wires at driver
+2. If motor spins wrong direction, swap motor wires at driver
 
-4. After testing, remove test code and re-upload EMBER v0.1 (motors disabled)
+3. After testing, remove test code and re-upload EMBER v0.1 (motors disabled)
 
 -----
 
@@ -870,7 +922,7 @@ The HAL automatically handles your motor driver type, so this test works for bot
 
 **Quality control checklist per bot:**
 
-```
+```txt
 □ Unique bot_id (0-8)
 □ Unique hostname (ember-bot-N)
 □ WiFi connects successfully
