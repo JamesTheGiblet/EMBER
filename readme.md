@@ -244,7 +244,7 @@ while True:
 │
 ├── /hardware/
 │   ├── circuit_diagram.png        ← Wiring schematic
-│   ├── parts_list.md              ← Shopping list with links
+│   ├── EMBER_PARTS_LIST.md              ← Shopping list with links
 │   └── /photos/
 │
 ├── /experiments/
@@ -458,32 +458,31 @@ Add to above:
 
 ---
 
-## Software Requirements
+## Software Setup (PlatformIO)
 
-### Arduino IDE Setup
+This project uses **PlatformIO** with Visual Studio Code for a more robust development experience.
 
-1. **Install Arduino IDE** (1.8.19+ or 2.x)
-2. **Add ESP32 board support:**
+### 1. Install VS Code and PlatformIO
 
-```txt
-   File → Preferences → Additional Board Manager URLs:
-   https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-```
+1. **Install Visual Studio Code:** Download it from [code.visualstudio.com](https://code.visualstudio.com/).
+2. **Install PlatformIO IDE Extension:**
+    - Open VS Code.
+    - Go to the Extensions view (Ctrl+Shift+X).
+    - Search for `PlatformIO IDE` and click "Install".
+    - Restart VS Code when prompted.
 
-3. **Install ESP32 boards:**
+### 2. Build and Upload
 
-```txt
-   Tools → Board → Boards Manager → Search "ESP32" → Install
-```
-
-4. **Select board:**
-
-```txt
-   Tools → Board → ESP32 Dev Module
-   Tools → Upload Speed → 115200
-```
-
-### Required Libraries
+1. **Open Project:** In VS Code, go to `File > Open Folder...` and select the root `EMBER` directory.
+2. **First Upload (USB):**
+    - Connect the ESP32 via USB.
+    - Click the **PlatformIO icon** in the VS Code activity bar (ant head).
+    - Under "Project Tasks", find your environment (`esp32dev`) and click **"Upload"**.
+3. **Wireless Upload (OTA):**
+    - After the first USB flash, you can upload wirelessly.
+    - Find the bot's IP address from the Serial Monitor.
+    - In the PlatformIO CLI terminal, run: `pio run -t upload --upload-port <IP_ADDRESS>`
+    - Example: `pio run -t upload --upload-port 192.168.1.50`
 
 All libraries are included with ESP32 core:
 
@@ -493,7 +492,7 @@ All libraries are included with ESP32 core:
 - ArduinoOTA (built-in)
 - Preferences (built-in)
 
-**No external library installation needed!**
+**PlatformIO will handle all dependencies automatically.**
 
 ---
 

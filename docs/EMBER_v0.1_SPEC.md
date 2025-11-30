@@ -1,6 +1,6 @@
 # EMBER v0.1 Technical Specification
 
-**Life From Light - Hardware Implementation with HAL+OTA**
+## Universal Life From Light - Hardware Implementation with HAL+OTA
 
 -----
 
@@ -44,9 +44,9 @@ EMBER v0.1 is the first implementation of the universal life pattern. This versi
 
 ## Power Architecture
 
-[Image of two 18650 batteries wired in series diagram]
+[Image of two LiPo batteries wired in series diagram]
 
-````
+````TXT
 [Battery 1: 3.7V] ──┐
                     ├─── 7.4V ─┬─→ [Motor Driver] → Motors
 [Battery 2: 3.7V] ──┘          │
@@ -203,25 +203,24 @@ preferences.putUInt("generation", genome.generation);
 
 ### ESP32 30-Pin Pinout
 
-```
-                    ESP32 DevKit (30-pin)
+```txt
+                ESP32 DevKit (30-pin)
                     
-        3V3  [ 1]              [30] GND
-         EN  [ 2]              [29] GPIO23  ← LED_RED
-    GPIO36   [ 3]              [28] GPIO22  ← LED_GREEN
-    GPIO39   [ 4]              [27] TXD0
-    GPIO34   [ 5] → LDR_LEFT   [26] RXD0
-    GPIO35   [ 6] → LDR_RIGHT  [25] GPIO21  ← LED_BLUE
-    GPIO32   [ 7]              [24] GND
-    GPIO33   [ 8]              [23] GPIO19
-    GPIO25   [ 9] → US_TRIG    [22] GPIO18
-    GPIO26   [10] → US_ECHO    [21] GPIO5   → MOTOR_A_EN (or PWM)
-    GPIO27   [11]              [20] GPIO17  → MOTOR_B_IN2
-     GPIO14  [12]              [19] GPIO16  → MOTOR_B_IN1
-     GPIO12  [13]              [18] GPIO4   → MOTOR_B_EN (or PWM)
-        GND  [14]              [17] GPIO0
-     GPIO13  [15] → MOTOR_STBY [16] GPIO2   → MOTOR_A_IN2
-                                      GPIO15 → MOTOR_A_IN1
+    3V3     [ 1]        │        [30] VIN
+    GND     [ 2] RGB GND│        [29] GND
+    GPIO15  [ 3] INT1   │        [28] GPIO13
+    GPIO2   [ 4]        │  RGB B [27] GPIO12
+    GPIO4   [ 5] INT2   │  RGB R [26] GPIO14
+    GPIO16  [ 6] INT3   │        [25] GPIO27
+    GPIO17  [ 7] INT4   │US_TRIG [24] GPIO26
+    GPIO5   [ 8]        │US_ECHO [23] GPIO25
+    GPIO18  [ 9]        │  RGB G [22] GPIO33
+    GPIO19  [10]        │        [21] GPIO32
+    GPIO21  [11]        │LDR lhs [20] GPIO35
+    RX0     [12]        │LDR rhs [19] GPIO34
+    TX0     [13]        │        [18] VN
+    GPIO22  [14]        │        [17] VP
+    GPIO23  [15]        │        [16] EN
 ```
 
 ### Detailed Pin Mapping
@@ -230,8 +229,8 @@ preferences.putUInt("generation", genome.generation);
 
 ```cpp
 namespace HAL::Pins {
-    constexpr int LDR_LEFT = 34;   // Left light sensor (ADC1_CH6)
-    constexpr int LDR_RIGHT = 35;  // Right light sensor (ADC1_CH7)
+    constexpr int LDR_LEFT = 35;   // Left light sensor (ADC1_CH7)
+    constexpr int LDR_RIGHT = 34;  // Right light sensor (ADC1_CH6)
 }
 ```
 
@@ -245,7 +244,7 @@ namespace HAL::Pins {
 │
 (voltage divider: 0V in darkness, 3.3V in bright light)
 
-````
+```txt
 
 **HAL Interface:**
 
@@ -262,24 +261,24 @@ float diff = lightSensor.readDifference(); // -1.0 to +1.0
 
 ```cpp
 namespace HAL::Pins {
-    constexpr int LED_RED = 23;
-    constexpr int LED_GREEN = 22;
-    constexpr int LED_BLUE = 21;
+    constexpr int LED_RED = 14;    // GPIO14 (RGB R)
+    constexpr int LED_GREEN = 33;  // GPIO33 (RGB G)
+    constexpr int LED_BLUE = 12;   // GPIO12 (RGB B)
 }
 ```
 
 **Circuit:**
 
-```
-GPIO23 ── 220Ω ──┬── LED RED ──┐
-GPIO22 ── 220Ω ──┼── LED GRN ──┼── GND (common cathode)
-GPIO21 ── 220Ω ──┴── LED BLU ──┘
+```txt
+GPIO14 ── 220Ω ──┬── LED RED ──┐
+GPIO33 ── 220Ω ──┼── LED GRN ──┼── GND (common cathode)
+GPIO12 ── 220Ω ──┴── LED BLU ──┘
 ```
 
 **HAL Interface:**
 
 ```cpp
-HAL::RGBLED led(23, 22, 21);
+HAL::RGBLED led(14, 33, 12);
 
 led.red(255);           // Solid red
 led.green(128);         // Dim green
@@ -307,13 +306,13 @@ namespace HAL::PWM {
 
 ```cpp
 namespace HAL::Pins {
-    constexpr int MOTOR_A_IN1 = 15;
-    constexpr int MOTOR_A_IN2 = 2;
-    constexpr int MOTOR_B_IN1 = 16;
-    constexpr int MOTOR_B_IN2 = 17;
-    constexpr int MOTOR_A_EN = 5;   // TB6612FNG PWM or unused
-    constexpr int MOTOR_B_EN = 4;   // TB6612FNG PWM or unused
-    constexpr int MOTOR_STBY = 13;  // TB6612FNG standby or unused
+    constexpr int MOTOR_A_IN1 = 15;   // GPIO15
+    constexpr int MOTOR_A_IN2 = 2;    // GPIO2
+    constexpr int MOTOR_B_IN1 = 16;   // GPIO16
+    constexpr int MOTOR_B_IN2 = 17;   // GPIO17
+    constexpr int MOTOR_A_EN = 5;     // GPIO5 (PWM or unused)
+    constexpr int MOTOR_B_EN = 4;     // GPIO4 (PWM or unused)
+    constexpr int MOTOR_STBY = 13;    // GPIO13 (standby or unused)
 }
 ```
 
@@ -335,8 +334,8 @@ motors.disable();             // Power down (v0.1 default)
 
 ```cpp
 namespace HAL::Pins {
-    constexpr int US_TRIGGER = 25;
-    constexpr int US_ECHO = 26;
+    constexpr int US_TRIGGER = 25;   // GPIO25
+    constexpr int US_ECHO = 26;     // GPIO26
 }
 ```
 

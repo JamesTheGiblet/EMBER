@@ -1,6 +1,6 @@
 # EMBER v0.1 Build Guide
 
-**Assembling Your First Artificial Life Form**
+## Assembling Your First Artificial Life Form
 
 -----
 
@@ -109,7 +109,7 @@ You have a **compact digital H-bridge** with 4 control pins (IN1/IN2/IN3/IN4), n
 
 **L9110S (most common cheap version):**
 
-```
+```txt
 Pins: B-1A, B-1B, GND, VCC, A-1A, A-1B
 - VCC: 2.5-12V (connect to 7.4V battery)
 - GND: Ground
@@ -119,7 +119,7 @@ Pins: B-1A, B-1B, GND, VCC, A-1A, A-1B
 
 **TB6612FNG (better quality):**
 
-```
+```txt
 Pins: VM, VCC, GND, AO1, AO2, BO1, BO2, AIN1, AIN2, PWMA, STBY, PWMB, BIN1, BIN2
 - VM: Motor voltage (7.4V battery)
 - VCC: Logic voltage (3.3V from ESP32)
@@ -142,7 +142,7 @@ This section provides the practical wiring connections for the components. For t
 **Connection Table:**
 
 | ESP32 Pin | L9110S Pin | Wire Color Suggestion |
-|-----------|------------|----------------------|
+|-----------|--------------------|----------------------|
 | GPIO15 | A-1A (Motor A IN1) | Orange |
 | GPIO2 | A-1B (Motor A IN2) | Yellow |
 | GPIO16 | B-1A (Motor B IN1) | Green |
@@ -155,7 +155,7 @@ This section provides the practical wiring connections for the components. For t
 **Connection Table:**
 
 | ESP32 Pin | TB6612 Pin | Wire Color |
-|-----------|-----------|------------|
+|-----------|------------|------------|
 | GPIO15 | AIN1 | Orange |
 | GPIO2 | AIN2 | Yellow |
 | GPIO5 | PWMA | Red |
@@ -189,7 +189,7 @@ This section provides the practical wiring connections for the components. For t
 
 **Component layout:**
 
-```
+```txt
         [Front]
           ___
          |US |  ← Ultrasonic
@@ -228,18 +228,18 @@ This section provides the practical wiring connections for the components. For t
 
 ### Step 3: Install Power System
 
-**CRITICAL: Test before connecting ESP32**
+## CRITICAL: Test before connecting ESP32
 
-1. **Mount batteries:**
+A. **Mount batteries:**
        - Secure the two LiPo batteries to the chassis bottom with a velcro strap or double-sided tape.
        - Ensure batteries won't shift during movement.
        - Place them where they won't interfere with wheels or wiring.
 
-2. **Wire batteries in series:**
+B. **Wire batteries in series:**
 
 [Image of two 18650 batteries wired in series diagram]
 
-```
+```txt
    Battery 1: [+] ─────┬────→ TO LOADS (+7.4V)
               [-] ──┐  │
                     │  │
@@ -247,16 +247,17 @@ This section provides the practical wiring connections for the components. For t
               [-] ─────┴────→ TO LOADS (GND)
 ```
 
-3. **Add power switch (recommended):**
+C. **Add power switch (recommended):**
        - Cut positive wire from battery
        - Install toggle switch inline
        - Use heat shrink to insulate
 
-4. **Connect buck converter:**
+D. **Connect buck converter:**
 
 [Image of LM2596 buck converter wiring diagram]
+![LM2596 buck converter wiring diagram](../hardware/photos/LM2596%20buck%20converter%20wiring%20diagram.jpg)
 
-```
+```txt
    Buck Converter:
    IN+  ← Battery positive (7.4V)
    IN-  ← Battery negative (GND)
@@ -264,17 +265,17 @@ This section provides the practical wiring connections for the components. For t
    OUT- → ESP32 GND
 ```
 
-5. **Adjust buck converter output:**
+E. **Adjust buck converter output:**
        - **DO THIS BEFORE CONNECTING ESP32**
        - Connect multimeter to OUT+ and OUT-
        - Turn adjustment screw until multimeter reads 5.0V
        - Verify multiple times (incorrect voltage will damage ESP32)
 
-6. **Test power system:**
+F. **Test power system:**
 
 <!-- end list -->
 
-```
+```txt
    ✓ Measure battery voltage: should be 7.4-8.4V
    ✓ Measure buck output: should be 5.0V ±0.1V
    ✓ Connect LED to buck output: should light dimly
@@ -282,21 +283,21 @@ This section provides the practical wiring connections for the components. For t
 
 ### Step 4: Mount ESP32
 
-1. **Create a secure mount:**
+A. **Create a secure mount:**
        - Use standoffs or hot glue
        - USB port must be accessible
        - Leave space above for heat dissipation
 
-2. **Connect power:**
+B. **Connect power:**
 
 <!-- end list -->
 
-```
+```txt
    Buck OUT+ → ESP32 VIN pin
    Buck OUT- → ESP32 GND pin
 ```
 
-3. **Test ESP32:**
+C. **Test ESP32:**
        - Plug in USB cable (while battery connected is fine)
        - Onboard LED should light
        - ESP32 should be warm, not hot
@@ -305,25 +306,25 @@ This section provides the practical wiring connections for the components. For t
 
 **Each LDR needs a voltage divider circuit:**
 
-[Image of LDR voltage divider circuit schematic]
+![LDR voltage divider circuit schematic](../hardware/photos/LDR%20voltage%20divider%20circuit%20schematic.png)
 
-```
+```txt
 3.3V ──┬─── [LDR] ───┬─── [10kΩ] ─── GND
        │             │
      (exposed)    TO ESP32
-                 (GPIO 34/35)
+                 (GPIO 34/21)
 ```
 
 **Left LDR:**
 
-1. Solder 10kΩ resistor to one LDR leg
-2. Solder wire from junction to ESP32 GPIO34
-3. Solder wire from free LDR leg to ESP32 3.3V
-4. Solder wire from free resistor leg to ESP32 GND
+1. Solder the **right leg** of the 10kΩ resistor to the **left leg** of the LDR. This connection point is the "junction".
+2. Solder a wire from this junction to the **ESP32 GPIO34** pin.
+3. Solder a wire from the free (right) leg of the LDR to the **ESP32 3.3V** pin.
+4. Solder a wire from the free (left) leg of the resistor to an **ESP32 GND** pin.
 
 **Right LDR:**
 
-1. Repeat process for GPIO35
+1. Repeat the exact same process, but connect the junction wire to **ESP32 GPIO21**.
 
 **Mounting LDRs:**
 
@@ -362,7 +363,7 @@ void loop() {
 ```
 GPIO23 ──[220Ω]── LED RED ──┐
 GPIO22 ──[220Ω]── LED GRN ──┼── GND
-GPIO21 ──[220Ω]── LED BLU ──┘
+GPIO13 ──[220Ω]── LED BLU ──┘
 ```
 
 **Assembly:**
@@ -437,9 +438,9 @@ void loop() {
 
 ```
    ESP32 GPIO15 → A-1A (Motor A)
-   ESP32 GPIO2  → A-1B (Motor A)
-   ESP32 GPIO16 → B-1A (Motor B)
-   ESP32 GPIO17 → B-1B (Motor B)
+   ESP32 GPIO16  → A-1B (Motor A)
+   ESP32 GPIO17 → B-1A (Motor B)
+   ESP32 GPIO18 → B-1B (Motor B)
 ```
 
 3. **Motor connections:**
@@ -471,10 +472,10 @@ void loop() {
 
 ```
    ESP32 GPIO15 → AIN1
-   ESP32 GPIO2  → AIN2
+   ESP32 GPIO16 → AIN2
    ESP32 GPIO5  → PWMA
-   ESP32 GPIO16 → BIN1
-   ESP32 GPIO17 → BIN2
+   ESP32 GPIO17 → BIN1
+   ESP32 GPIO18 → BIN2
    ESP32 GPIO4  → PWMB
    ESP32 GPIO13 → STBY (or tie to VCC)
 ```
@@ -544,78 +545,95 @@ GND  → GND
 
 -----
 
-## Programming and Network Setup
+## Programming with PlatformIO
 
-This section covers the software setup, including Arduino IDE configuration, setting network credentials, and assigning a unique identity to each bot.
+This project uses **PlatformIO** for a streamlined build and upload process.
 
-### Step 1: Arduino IDE Setup
+### Step 1: Install VS Code & PlatformIO
 
-1. **Install Arduino IDE:** Download and install the latest version from arduino.cc.
-2. **Add ESP32 Board Support:**
-        - Go to `File > Preferences`.
-        - In "Additional Board Manager URLs", add: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
-        - Click "OK".
-3. **Install ESP32 Boards:**
-        - Go to `Tools > Board > Boards Manager...`.
-        - Search for "ESP32" and install the package by Espressif Systems.
-4. **Select Board Settings:**
-        - `Tools > Board`: Select "ESP32 Dev Module".
-        - `Tools > Upload Speed`: Set to "115200".
-        - `Tools > Port`: Select the COM port corresponding to your ESP32.
+1. **Install Visual Studio Code:** If you don't have it, download it from code.visualstudio.com.
+2. **Install PlatformIO Extension:**
+    - In VS Code, open the **Extensions** view (the icon with four squares).
+    - Search for `PlatformIO IDE` and click **Install**.
+    - Restart VS Code after installation.
 
 ### Step 2: Configure Bot Identity and WiFi
 
 This is the most critical step for enabling network features and running swarm experiments. You must edit the `ember_v0.1_hal_ota.ino` file.
 
-1. **Open the Sketch:** Open `ember_v0.1_hal_ota.ino` in the Arduino IDE.
+1. **Open Project Folder:** In VS Code, go to `File > Open Folder...` and select the root `EMBER` project directory. PlatformIO will automatically recognize the `platformio.ini` file.
 
-2. **Set WiFi Credentials:** Near the top of the file, find the `CONFIGURATION` block and enter your WiFi network's SSID and password.
+2. **Edit Configuration:** Open the `src/main.cpp` file.
 
-    ` cpp     // WiFi credentials - CHANGE THESE     const char* WIFI_SSID = "YourNetworkName";     const char* WIFI_PASSWORD = "YourPassword"; `
+3. **Set WiFi Credentials:** Near the top of the file, find the `CONFIGURATION` block and enter your WiFi network's SSID and password.
 
-3. **Set a Unique Hostname:** In the same block, define a unique hostname for this specific bot. This is used for accessing the web dashboard (e.g., `http://ember-bot-0.local/`).
+    ```cpp
+    // WiFi credentials - CHANGE THESE
+    const char* WIFI_SSID = "YourNetworkName";
+    const char* WIFI_PASSWORD = "YourPassword";
+    ```
 
-    ` cpp     // OTA configuration     const char* OTA_HOSTNAME = "ember-bot-0";  // Change for each bot     const char* OTA_PASSWORD = "ember2025";     // OTA update password `
+4. **Set a Unique Hostname:** In the same block, define a unique hostname for this specific bot. This is used for accessing the web dashboard (e.g., `http://ember-bot-0.local/`).
+
+    ```cpp
+    // OTA configuration
+    const char* OTA_HOSTNAME = "ember-bot-0";  // Change for each bot
+    const char* OTA_PASSWORD = "ember2025";     // OTA update password
+    ```
 
     **IMPORTANT:** Every bot on your network **must** have a unique hostname. The convention is `ember-bot-N`, where N is the bot's ID number.
 
-4. **Set the Bot's Internal ID:** A little further down, in the `GENETIC CODE` section, set the `bot_id`. This number should match the number in the hostname.
+5. **Set the Bot's Internal ID:** A little further down, in the `GENETIC CODE` section, set the `bot_id`. This number should match the number in the hostname.
 
-    \`\`\`cpp
-    struct Genome {
-        // ...
-        uint8\_t bot\_id;
-        // ...
-    };
-
-    Genome genome = {
-        .light\_threshold = 0.5,
-        .efficiency = 1.0,
-        .bot\_id = 0, // \<-- CHANGE THIS FOR EACH BOT (0, 1, 2, etc.)
-        .generation = 0
-    };
-    \`\`\`
+    ```cpp
+    Genome genome = {
+        .light_threshold = 0.5,
+        .efficiency = 1.0,
+        .bot_id = 0, // <-- CHANGE THIS FOR EACH BOT (0, 1, 2, etc.)
+        .generation = 0
+    };
+    ```
 
     **Example for the first three bots:**
 
     | Bot | `OTA_HOSTNAME` | `genome.bot_id` |
     |:---:|:----------------|:---------------:|
-    | \#0  | `"ember-bot-0"` | `0`             |
-    | \#1  | `"ember-bot-1"` | `1`             |
-    | \#2  | `"ember-bot-2"` | `2`             |
+    | #0  | `"ember-bot-0"` | `0`             |
+    | #1  | `"ember-bot-1"` | `1`             |
+    | #2  | `"ember-bot-2"` | `2`             |
 
 ### Step 3: First Upload via USB
 
 1. **Connect the Bot:** Connect the ESP32 to your computer with a data-capable Micro-USB cable.
-2. **Click Upload:** Press the "Upload" button (→) in the Arduino IDE.
-3. **Wait for Completion:** The IDE will compile the code and upload it. This first upload must be done via USB. All subsequent uploads can be done wirelessly (OTA).
+2. **Click Upload:** In the VS Code status bar at the bottom, click the **right-arrow icon (→)** to build and upload the project.
+3. **Wait for Completion:** PlatformIO will compile and upload the code. This first upload must be done via USB.
 
 ### Step 4: Verify via Serial Monitor
 
-1. **Open Serial Monitor:** Go to `Tools > Serial Monitor` and set the baud rate to `115200`.
+1. **Open Serial Monitor:** In the VS Code status bar, click the **plug icon (🔌)** to open the PlatformIO Serial Monitor. The baud rate is set automatically from `platformio.ini`.
 2. **Check the Output:** You should see the boot sequence, including the WiFi connection status and the bot's assigned IP and `.local` address. This confirms your setup is working.
 
     `[WiFi] Connected!     [WiFi] IP: 192.168.1.50     [mDNS] Access at: http://ember-bot-0.local/     ...     Light: 0.512 | Energy: 73.2 | Alive: 5s | Status: ALIVE | IP: 192.168.1.50`
+
+### Step 5: Wireless (OTA) Uploads
+
+After the first USB flash, all future updates can be wireless.
+
+1. **Find the Bot's IP:** Note the IP address from the Serial Monitor or the bot's web dashboard.
+2. **Open the PlatformIO CLI:** In VS Code, select `Terminal > New Terminal` to open a command line.
+3. **Run the OTA Upload Command:**
+
+    ```bash
+    pio run -t upload --upload-port <IP_ADDRESS_OF_BOT>
+    ```
+
+    For example:
+
+    ```bash
+    pio run -t upload --upload-port 192.168.1.50
+    ```
+
+The bot's LED will turn purple during the update and flash green upon success.
 
 -----
 

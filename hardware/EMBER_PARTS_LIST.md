@@ -30,8 +30,8 @@ These components are required for the bot to function, think, and manage energy.
 |-----|-----------|---------------|-------|
 | 1 | **ESP32 DevKit** | 30-pin version | **CRITICAL:** Must be the 30-pin version to match wiring guides. |
 | 1 | **Buck Converter** | 7-12V In, 5V 3A Out | Steps down battery voltage to safe 5V for ESP32. **Must be adjusted to 5V before use.** |
-| 2 | **18650 Battery** | 3.7V 2000mAh+ | Wired in series for ~7.4V total. High capacity recommended for WiFi features. |
-| 1 | **Battery Holder** | 2-slot 18650 Series | Must connect batteries in series (7.4V), not parallel. |
+| 2 | **LiPo Battery** | 3.7V 2000mAh+ | Wired in series for ~7.4V total. High capacity recommended for WiFi features. |
+| 1 | **Velcro Strap** | - | For securing LiPo batteries. A battery holder is not needed. |
 | 1 | **Charging Board** | TP4056 Dual Cell | For recharging the LiPo batteries. |
 | 1 | **Switch** | Toggle/Rocker | Optional but recommended for cutting power. |
 
@@ -103,4 +103,4 @@ You do not need a full lab, but these specific tools are necessary for assembly:
 
 * **Motor Driver:** The `Technical Specification` mentions the L298N, but the `BUILD_GUIDE` explicitly warns **AGAINST** it due to size. Stick to the **L9110S** or **TB6612FNG**.
 * **ESP32:** Ensure you buy the **30-pin** version. The 38-pin versions will not fit the wiring diagrams provided in the manual.
-* **Batteries:** 18650 LiPo batteries can be dangerous. Use a dedicated charger or the TP4056 board and never leave them charging unattended.
+* **Batteries:** LiPo batteries can be dangerous. Use a dedicated charger like the TP4056 board and never leave them charging unattended.
