@@ -1155,8 +1155,6 @@ From simple rules. In silicon and photons.
 
 ## Ready to Build?
 
-
-
 1. Configure WiFi (or skip for offline mode)
 
 2. Flash the code
@@ -1167,13 +1165,7 @@ From simple rules. In silicon and photons.
 
 5. Place it in light
 
-
-
 **Watch what emerges.**
-
-
-
-
 
 *EMBER v0.2 Mobile Life Edition*  
 
