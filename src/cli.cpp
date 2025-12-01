@@ -135,6 +135,7 @@ void handleSerialCommands() {
             Serial.println("  battery  - Show battery status.");
             Serial.println("  genome   - Show current genetic traits.");
             Serial.println("");
+            Serial.println("  --- Motor Testing ---");
             Serial.println("  reset    - Reset life and energy.");
             Serial.println("  mutate   - Mutate the current genome and save.");
             Serial.println("  randomize- Generate a new random genome and reset life.");

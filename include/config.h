@@ -20,8 +20,6 @@ namespace Config {
         constexpr int CH_RED   = 0;
         constexpr int CH_GREEN = 1;
         constexpr int CH_BLUE  = 2;
-        constexpr int CH_MOTOR_A = 3;
-        constexpr int CH_MOTOR_B = 4;
     }
 
     // ADC calibration for light sensors
@@ -52,6 +50,6 @@ namespace Config {
     // ========================================================================
     namespace Behavior {
         // Distance in cm to trigger the obstacle avoidance behavior.
-        constexpr float OBSTACLE_DISTANCE_CM = 15.0f;
+        constexpr float OBSTACLE_DISTANCE_CM = 25.0f;
     }
 } // namespace Config

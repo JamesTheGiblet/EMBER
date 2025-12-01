@@ -44,7 +44,7 @@ float light_level = 0.0f;
 unsigned long alive_time_ms = 0;
 unsigned long boot_time_ms = 0;
 bool is_alive = true;
-bool manual_override = false;
+bool manual_override = true; // Start in manual mode, waiting for a 'go' command.
 BehaviorState_t currentBehavior = IDLE;
 
 LifeParams_t life_params;
@@ -302,8 +302,6 @@ void setup() {
     // Give the bot a starting chance based on its initial environment
     updateLife(0.1f); // Simulate a small time-slice for the initial energy calculation
 
-    HAL::motors.begin();
-
     // Set boot timestamp after all initial setup
     boot_time_ms = millis();
 
@@ -423,51 +421,32 @@ void decideBehavior() {
  * @brief Executes the current behavior by controlling the motors.
  */
 void executeBehavior() {
-    if (!is_alive) {
-        HAL::motors.stop();
-        return;
-    }
-
-    switch (currentBehavior) {
-        case IDLE: {
-            HAL::motors.stop();
-            break;
-        }
-
-        case SEEKING_LIGHT: {
-            executeSeeking();
-            break;
-        }
-
-        case AVOIDING_OBSTACLE: {
-            executeAvoidance();
-            break;
-        }
-    }
+    // Motor control removed; function intentionally left empty.
 }
 
 void loop() {
-    ArduinoOTA.handle(); // Always handle network requests
-    server.handleClient(); // Handle incoming web requests
-
+    // Handle OTA updates
+    ArduinoOTA.handle();
+    // Handle web server requests
+    server.handleClient();
+    // Handle serial commands
+    handleSerialCommands();
+    // Check WiFi connection periodically
     checkWiFiConnection();
-    handleSerialCommands(); // Check for user input
-    
-    // Calculate delta time (time since last loop)
+
+    // Calculate delta time for physics-based updates
     unsigned long now = millis();
     float dt = (now - last_life_update_ms) / 1000.0f;
     last_life_update_ms = now;
     
-    // Read primary sensors once per loop for consistency
-    light_level = lightSensor.readAverage();
-
     // Update the life state regardless of whether it's alive or dead.
     // This allows a "dead" bot to potentially gain energy and resurrect.
     updateLife(dt);
 
     if (is_alive) {
-        // Decide what to do, then do it.
+        // Decide what to do...
         decideBehavior();
+        // executeBehavior() is called; motor control removed.
         executeBehavior();
     }
 
@@ -477,6 +456,16 @@ void loop() {
 
     // Always update the LED to reflect the current state
     showState();
+
+    if (manual_override && is_alive) {
+        // Special status message when waiting for the 'go' command.
+        if (millis() - last_stats_print_ms > 2000) { // Print less often in this state
+            Serial.println("--- Bot is ready. Send 'force auto' to begin autonomous behavior. ---");
+            last_stats_print_ms = millis();
+        }
+        // We don't return here, so that core functions like OTA still run.
+        // The decideBehavior() and executeBehavior() functions will handle the idle state.
+    }
 
     // Print stats to serial every second
     if (millis() - last_stats_print_ms > 1000) {

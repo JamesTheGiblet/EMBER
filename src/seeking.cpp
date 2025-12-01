@@ -20,9 +20,9 @@ void executeSeeking() {
     // Only turn if difference is significant (reduces jitter)
     if (abs_error > 0.05f) {  // 5% threshold
         int turnSpeed = constrain((int)(error * genome.turn_sensitivity), -100, 100);
-        HAL::motors.setSpeeds(baseSpeed - turnSpeed, baseSpeed + turnSpeed);
+        // Motor control removed
     } else {
         // Go straight if light is roughly equal
-        HAL::motors.setSpeeds(baseSpeed, baseSpeed);
+        // Motor control removed
     }
 }
