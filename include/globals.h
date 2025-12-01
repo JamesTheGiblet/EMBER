@@ -12,6 +12,15 @@ extern bool is_alive;
 extern float energy;
 extern unsigned long alive_time_ms;
 extern unsigned long boot_time_ms;
+extern bool manual_override;
+
+// Life parameters that can be configured at runtime
+typedef struct {
+    float energy_decay;
+    float energy_gain;
+    float movement_cost_multiplier;
+} LifeParams_t;
+extern LifeParams_t life_params;
 
 // Behavior state enum
 typedef enum {

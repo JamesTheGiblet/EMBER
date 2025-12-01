@@ -242,3 +242,8 @@ Monitor the serial output for power management debug information:
 - **Charging Integration**: Automatic dock-and-charge capabilities
 - **Remote Monitoring**: Web dashboard for battery status
 - **Battery Health Tracking**: Long-term capacity and performance analysis
+
+*EMBER power management system*  
+*From simple life to artificial ecosystems*  
+*Part of the Forge Theory Project*  
+*MIT License - Build the future openly*

@@ -7,6 +7,7 @@
 #include "genome.h"
 #include "globals.h"
 
+extern LifeParams_t life_params;
 extern WebServer server;
 extern Genome genome;
 extern float light_level;
@@ -17,6 +18,9 @@ void saveGenome();
 void handleRoot();
 void handleAPIStats();
 void handleReset();
+void handleMutate();
+void handleRandomize();
+void handleSave();
 void handleNotFound();
 void setupWebServer();
 
@@ -45,12 +49,15 @@ void handleRoot() {
     strcat(buffer, "</div>");
     strcat(buffer, "<div class='box'><h2>Environment</h2>");
     snprintf(temp, sizeof(temp), "<p>Light Level: <span>%.3f</span></p>", light_level); strcat(buffer, temp);
+    snprintf(temp, sizeof(temp), "<form action='/set/decay' method='get'><p>Energy Decay: <input name='v' type='number' step='0.01' min='0.0' max='5.0' value='%.3f'><button type='submit'>Set</button></p></form>", life_params.energy_decay); strcat(buffer, temp);
     snprintf(temp, sizeof(temp), "<p>Distance: <span>%.1f cm</span></p>", HAL::ultrasonic.readDistance()); strcat(buffer, temp);
     strcat(buffer, "</div>");
     strcat(buffer, "<div class='box'><h2>Genome</h2>");
     snprintf(temp, sizeof(temp), "<p>Generation: <span>%u</span></p>", genome.generation); strcat(buffer, temp);
-    snprintf(temp, sizeof(temp), "<p>Light Threshold: <span>%.3f</span></p>", genome.light_threshold); strcat(buffer, temp);
-    snprintf(temp, sizeof(temp), "<p>Efficiency: <span>%.3f</span></p>", genome.efficiency); strcat(buffer, temp);
+    snprintf(temp, sizeof(temp), "<form action='/set/threshold' method='get'><p>Light Threshold: <input name='v' type='number' step='0.01' min='0.01' max='1.0' value='%.3f'><button type='submit'>Set</button></p></form>", genome.light_threshold); strcat(buffer, temp);
+    snprintf(temp, sizeof(temp), "<form action='/set/efficiency' method='get'><p>Efficiency: <input name='v' type='number' step='0.01' min='0.5' max='2.0' value='%.3f'><button type='submit'>Set</button></p></form>", genome.efficiency); strcat(buffer, temp);
+    snprintf(temp, sizeof(temp), "<form action='/set/turn_sensitivity' method='get'><p>Turn Sensitivity: <input name='v' type='number' step='1' min='50' max='2000' value='%d'><button type='submit'>Set</button></p></form>", (int)genome.turn_sensitivity); strcat(buffer, temp);
+    snprintf(temp, sizeof(temp), "<form action='/set/base_speed' method='get'><p>Base Speed: <input name='v' type='number' step='1' min='50' max='255' value='%d'><button type='submit'>Set</button></p></form>", genome.base_speed); strcat(buffer, temp);
     strcat(buffer, "</div>");
     strcat(buffer, "<div class='box'><h2>Power</h2>");
     if (battery.mode == POWER_USB_DEBUG) {
@@ -63,6 +70,9 @@ void handleRoot() {
     strcat(buffer, "</div>");
     strcat(buffer, "<div class='box actions'><h2>Controls</h2>");
     strcat(buffer, "<a href='/reset'>Reset Life</a>");
+    strcat(buffer, "<a href='/mutate'>Mutate Genome</a>");
+    strcat(buffer, "<a href='/save'>Save Genome</a>");
+    strcat(buffer, "<a href='/randomize' class='danger'>Randomize Genome</a>");
     strcat(buffer, "<a href='/api/stats' target='_blank'>JSON API</a>");
     strcat(buffer, "</div>");
     strcat(buffer, "</div></body></html>");
@@ -76,10 +86,10 @@ void handleAPIStats() {
         "\"light_level\":%.3f,\"light_left\":%.3f,\"light_right\":%.3f,"
         "\"distance_cm\":%.1f,\"battery_v\":%.2f,\"battery_pct\":%.1f,"
         "\"power_mode\":%d,\"alive_time_s\":%lu}",
-        genome.bot_id, genome.generation, is_alive ? "true" : "false", energy, //
-        light_level, HAL::lightSensor.readLeft(), HAL::lightSensor.readRight(), //
-        HAL::ultrasonic.readDistance(), battery.voltage, battery.percentage,   //
-        battery.mode, alive_time_ms / 1000);                                    //
+        genome.bot_id, genome.generation, is_alive ? "true" : "false", energy,
+        light_level, HAL::lightSensor.readLeft(), HAL::lightSensor.readRight(),
+        HAL::ultrasonic.readDistance(), battery.voltage, battery.percentage,
+        battery.mode, alive_time_ms / 1000);
     server.send(200, "application/json", buffer);
 }
 
@@ -92,14 +102,96 @@ void handleReset() {
     server.send(303);
 }
 
+void handleMutate() {
+    genome.light_threshold += random(-100, 100) / 2000.0f; // Smaller mutation
+    genome.efficiency += random(-100, 100) / 2000.0f;
+    genome.light_threshold = constrain(genome.light_threshold, 0.01f, 1.0f);
+    genome.efficiency = constrain(genome.efficiency, 0.5f, 2.0f);
+    genome.generation++;
+    saveGenome();
+    Serial.println("[Web] Genome mutated via web.");
+    server.sendHeader("Location", "/");
+    server.send(303);
+}
+
+void handleRandomize() {
+    genome.light_threshold = random(10, 500) / 1000.0f;
+    genome.efficiency = 0.75f + (random(0, 100) / 100.0f);
+    genome.turn_sensitivity = 200 + random(0, 600);
+    genome.base_speed = 150 + random(0, 100);
+    genome.generation = 0;
+    saveGenome();
+    handleReset(); // Also reset life state
+    Serial.println("[Web] Genome randomized via web.");
+}
+
+void handleSave() {
+    saveGenome();
+    server.sendHeader("Location", "/");
+    server.send(303);
+}
+
 void handleNotFound() {
     server.send(404, "text/plain", "Not Found");
 }
 
 void setupWebServer() {
     server.on("/", HTTP_GET, handleRoot);
+    server.on("/mutate", HTTP_GET, handleMutate);
+    server.on("/randomize", HTTP_GET, handleRandomize);
+    server.on("/save", HTTP_GET, handleSave);
     server.on("/api/stats", HTTP_GET, handleAPIStats);
     server.on("/reset", HTTP_GET, handleReset);
+    server.on("/set/threshold", HTTP_GET, []() {
+        if (server.hasArg("v")) {
+            float val = server.arg("v").toFloat();
+            genome.light_threshold = constrain(val, 0.01f, 1.0f);
+            saveGenome();
+            server.send(200, "text/plain", "light_threshold set");
+        } else {
+            server.send(400, "text/plain", "Missing value");
+        }
+    });
+    server.on("/set/efficiency", HTTP_GET, []() {
+        if (server.hasArg("v")) {
+            float val = server.arg("v").toFloat();
+            genome.efficiency = constrain(val, 0.5f, 2.0f);
+            saveGenome();
+            server.send(200, "text/plain", "efficiency set");
+        } else {
+            server.send(400, "text/plain", "Missing value");
+        }
+    });
+    server.on("/set/turn_sensitivity", HTTP_GET, []() {
+        if (server.hasArg("v")) {
+            int val = server.arg("v").toInt();
+            genome.turn_sensitivity = constrain(val, 50, 2000);
+            saveGenome();
+            server.send(200, "text/plain", "turn_sensitivity set");
+        } else {
+            server.send(400, "text/plain", "Missing value");
+        }
+    });
+    server.on("/set/base_speed", HTTP_GET, []() {
+        if (server.hasArg("v")) {
+            int val = server.arg("v").toInt();
+            genome.base_speed = constrain(val, 50, 255);
+            saveGenome();
+            server.send(200, "text/plain", "base_speed set");
+        } else {
+            server.send(400, "text/plain", "Missing value");
+        }
+    });
+    server.on("/set/decay", HTTP_GET, []() {
+        if (server.hasArg("v")) {
+            float val = server.arg("v").toFloat();
+            life_params.energy_decay = constrain(val, 0.0f, 5.0f);
+            // Note: This is a runtime change and is not saved to flash.
+            server.send(200, "text/plain", "energy_decay set for this session");
+        } else {
+            server.send(400, "text/plain", "Missing value");
+        }
+    });
     server.onNotFound(handleNotFound);
     server.begin();
     Serial.println("[Web] Server started.");

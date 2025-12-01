@@ -40,6 +40,8 @@ namespace Config {
         constexpr float ENERGY_DECAY = 0.1f;
         // The rate at which energy is gained from excess light (per second).
         constexpr float ENERGY_GAIN = 2.0f;
+        // The multiplier for energy cost when moving (e.g., 1.5 = 50% extra cost).
+        constexpr float MOVEMENT_COST_MULTIPLIER = 1.5f;
         // The maximum and minimum possible energy levels.
         constexpr float MAX_ENERGY = 100.0f;
         constexpr float MIN_ENERGY = 0.0f;

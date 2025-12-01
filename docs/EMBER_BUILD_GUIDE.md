@@ -410,7 +410,7 @@ void loop() {
 
 **Circuit for common cathode LED:**
 
-```
+```txt
 GPIO14 ──[220Ω]── LED RED ──┐
 GPIO33 ──[220Ω]── LED GRN ──┼── GND
 GPIO12 ──[220Ω]── LED BLU ──┘
@@ -422,7 +422,7 @@ GPIO12 ──[220Ω]── LED BLU ──┘
 
 <!-- end list -->
 
-```
+```txt
    Looking at LED (flat side = cathode side):
    
    Longest pin = Common cathode (to GND)
@@ -431,18 +431,18 @@ GPIO12 ──[220Ω]── LED BLU ──┘
     │   │   │   │
 ```
 
-2. **Solder resistors:**
+1. **Solder resistors:**
       - Cut resistor legs to \~5mm
       - Solder 220Ω to each color pin (not cathode)
       - Leave cathode leg bare
 
-3. **Solder wires:**
+2. **Solder wires:**
       - Red wire to RED resistor → GPIO14
       - Green wire to GREEN resistor → GPIO33
       - Blue wire to BLUE resistor → GPIO12
       - Black wire to cathode → GND
 
-4. **Mount LED:**
+3. **Mount LED:**
       - Drill 5mm hole in top of chassis
       - Push LED through (resistors should be below)
       - Secure with hot glue from underneath

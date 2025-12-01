@@ -9,6 +9,13 @@
 struct Genome {
     float light_threshold;  // How much light is needed to gain energy (0.0-1.0)
     float efficiency;       // How well light converts to energy (0.5-1.5)
+
+    // --- v0.2 Movement Genes ---
+    // How aggressively the bot turns towards light.
+    float turn_sensitivity;
+    // How fast the bot moves in general.
+    int base_speed;
+
     uint8_t bot_id;         // The unique ID of this bot (0-8)
     uint32_t generation;     // The evolutionary generation number
 };

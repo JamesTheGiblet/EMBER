@@ -21,6 +21,9 @@
 #include "genome.h"
 #include "credentials_user.h"
 #include "globals.h"
+#include "avoidance.h"
+#include "seeking.h"
+#include "cli.h"
 
 using namespace HAL;
 
@@ -41,7 +44,10 @@ float light_level = 0.0f;
 unsigned long alive_time_ms = 0;
 unsigned long boot_time_ms = 0;
 bool is_alive = true;
+bool manual_override = false;
 BehaviorState_t currentBehavior = IDLE;
+
+LifeParams_t life_params;
 BatteryMonitor_t battery;
 
 // Timers for managing non-blocking updates
@@ -89,7 +95,6 @@ void updateBatteryStatus() {
 // FORWARD DECLARATIONS
 // ============================================================================
 void updateLife(float dt);
-void handleSerialCommands();
 void decideBehavior();
 void executeBehavior();
 void setupWebServer();
@@ -256,8 +261,10 @@ void loadGenome() {
         // Seed the random number generator from an unused analog pin
         randomSeed(analogRead(A0)); 
 
-        genome.light_threshold = 0.05f; // Set a minimal, but non-zero, threshold
+        genome.light_threshold = 0.3f; // A more forgiving initial threshold
         genome.efficiency = 0.75f + (random(0, 100) / 100.0f); // Random efficiency 0.75 to 1.75
+        genome.turn_sensitivity = 200 + random(0, 600); // Random sensitivity from 200 to 800
+        genome.base_speed = 150 + random(0, 100); // Random base speed from 150 to 250
         genome.bot_id = 0; // Default to 0, should be set uniquely
         genome.generation = 0;
         
@@ -281,6 +288,11 @@ void setup() {
     led.begin();
     led.yellow(50); // Dim yellow to indicate booting
 
+    // Initialize runtime life parameters from config constants
+    life_params.energy_decay = Config::Life::ENERGY_DECAY;
+    life_params.energy_gain = Config::Life::ENERGY_GAIN;
+    life_params.movement_cost_multiplier = Config::Life::MOVEMENT_COST_MULTIPLIER;
+
     // Load the bot's identity and traits from "EEPROM"
     loadGenome();
 
@@ -294,6 +306,8 @@ void setup() {
 
     // Set boot timestamp after all initial setup
     boot_time_ms = millis();
+
+    setupAvoidance();
 
     setupWiFi();
     setupMDNS();
@@ -318,28 +332,28 @@ void setup() {
  * @brief Updates the bot's energy based on light level and genome.
  */
 void updateLife(float dt) {
-    // Universal cost of existence
-    // The decay is now multiplied by delta time (dt) to be per-second.
-    energy -= Config::Life::ENERGY_DECAY * dt;
-
-    // Gain energy from light if the threshold is met
+    // Base existence cost
+    float energy_cost = life_params.energy_decay * dt;
+    
+    // Movement adds additional cost
+    if (currentBehavior == SEEKING_LIGHT || currentBehavior == AVOIDING_OBSTACLE) {
+        energy_cost *= life_params.movement_cost_multiplier;
+    }
+    
+    energy -= energy_cost;
+    
+    // Energy gain from light (unchanged)
     if (light_level > genome.light_threshold) {
         float excess_light = light_level - genome.light_threshold;
-        energy += Config::Life::ENERGY_GAIN * excess_light * genome.efficiency * dt;
+        energy += life_params.energy_gain * excess_light * genome.efficiency * dt;
     }
-
-    // Clamp energy to its valid range
-    energy = constrain(energy, Config::Life::MIN_ENERGY, Config::Life::MAX_ENERGY);
-
-    // Check for death
-    if (energy <= 0.0f) {
-        is_alive = false;
-    }
-
-    // Check for resurrection
+    
+    energy = constrain(energy, 0.0f, 100.0f);
+    
+    if (energy <= 0.0f) is_alive = false;
     if (!is_alive && energy > 0.0f) {
         is_alive = true;
-        boot_time_ms = millis(); // Reset the 'alive' timer
+        boot_time_ms = millis();
     }
 }
 
@@ -378,11 +392,15 @@ void showState() {
  * @brief The "brain" of the bot. Decides what behavior to adopt.
  */
 void decideBehavior() {
+    // If manual override is active, don't change the behavior.
+    if (manual_override) {
+        return;
+    }
+
     // --- Highest Priority: Obstacle Avoidance ---
-    float distance = ultrasonic.readDistance();
-    if (distance > 0 && distance < Config::Behavior::OBSTACLE_DISTANCE_CM) {
+    if (checkObstacle()) {
         currentBehavior = AVOIDING_OBSTACLE;
-        return; // Obstacle avoidance overrides all other behaviors
+        return;
     }
 
     // Power state overrides all other decisions.
@@ -392,7 +410,7 @@ void decideBehavior() {
     }
 
     // The primary drive is survival. If energy is low, it must seek light.
-    if (energy < 95.0f) {
+    if (energy < 99.0f) { // Start seeking light almost immediately
         currentBehavior = SEEKING_LIGHT;
     } 
     // If energy is high, it can rest and conserve power.
@@ -417,29 +435,12 @@ void executeBehavior() {
         }
 
         case SEEKING_LIGHT: {
-            float leftLight = lightSensor.readLeft();
-            float rightLight = lightSensor.readRight();
-            
-            // Simple phototaxis: turn towards the brighter light source.
-            float error = leftLight - rightLight;
-            
-            // Adjust speed based on power mode
-            int baseSpeed = (battery.mode == POWER_ECONOMY) ? 150 : 200;
-            int turnSpeed = (int)(error * 500.0f);
-
-            HAL::motors.setSpeeds(baseSpeed - turnSpeed, baseSpeed + turnSpeed);
+            executeSeeking();
             break;
         }
 
         case AVOIDING_OBSTACLE: {
-            // Simple avoidance: back up and turn right.
-            Serial.println("[Behavior] Obstacle detected! Avoiding...");
-            HAL::motors.setSpeeds(-180, -180); // Back up
-            delay(400);
-            HAL::motors.setSpeeds(200, -200);  // Turn right
-            delay(300);
-            HAL::motors.stop();
-            currentBehavior = IDLE; // Re-evaluate state on the next loop
+            executeAvoidance();
             break;
         }
     }
@@ -494,42 +495,6 @@ void loop() {
 
         Serial.printf("Light: %.3f | Energy: %5.1f | Batt: %-18s | Dist: %4.1fcm | Alive: %lus | Status: %s\n",
                       light_level, energy, battery_str, ultrasonic.readDistance(), alive_time_ms / 1000, is_alive ? "ALIVE" : "DEAD");
-    }
-}
-
-/**
- * @brief Handles incoming commands from the Serial Monitor.
- */
-void handleSerialCommands() {
-    if (Serial.available() > 0) {
-        String cmd = Serial.readStringUntil('\n');
-        cmd.trim();
-
-        if (cmd == "sensors") {
-            Serial.println("\n--- Sensor Readings ---");
-            Serial.printf("Light Left:  %.3f\n", lightSensor.readLeft());
-            Serial.printf("Light Right: %.3f\n", lightSensor.readRight());
-            Serial.printf("Light Avg:   %.3f\n", light_level);
-            Serial.printf("Distance:    %.1f cm\n", ultrasonic.readDistance());
-            Serial.println("----------------------\n");
-        }
-        else if (cmd == "reset") {
-            energy = 100.0f;
-            is_alive = true;
-            boot_time_ms = millis();
-            Serial.println("[System] Life has been reset.");
-        }
-        else if (cmd == "help") {
-            Serial.println("\n--- Serial Commands ---");
-            Serial.println("  sensors  - Show current sensor readings.");
-            Serial.println("  reset    - Reset the bot's life and energy.");
-            Serial.println("  forward, back, left, right, stop - Control motors.");
-            Serial.println("  help     - Show this command list.");
-            Serial.println("-----------------------\n");
-        }
-        else if (cmd.length() > 0) {
-            Serial.println("Unknown command. Type 'help' for a list of commands.");
-        }
     }
 }
 

@@ -1,57 +1,104 @@
-# EMBER v0.1 - Life From Light
+# EMBER v0.2 - Mobile Artificial Life
 
-## Latest Codebase Updates (2025)
+**Simple rule: Existence costs energy. Resources provide energy. Survive.**
 
-### Modular Architecture & Refactoring
+---
 
-- **Web server logic** is now fully modular: all HTTP handlers and setup are in `src/web_server.cpp`, with prototypes in `include/web_server.h`.
-- **Global state and configuration** (life state, battery, timers, etc.) are managed via `include/globals.h` for clean cross-file access.
-- **No duplicate definitions**: Only prototypes are included in headers, and all implementations are in `.cpp` files.
-- **Build system** uses PlatformIO for both USB and OTA uploads (`platformio.ini`).
+## What We Have Accomplished: The v0.2 Milestone
 
-### Firmware Features
+This moment marks the successful completion of the v0.2 "Mobile Life" milestone. We have transformed the EMBER bots from stationary organisms into a dynamic, mobile population capable of interacting with their environment in a meaningful way.
 
-- **Robust OTA update support**: Upload new firmware wirelessly after first USB flash.
-- **Persistent genome storage**: Genome is saved to ESP32 flash and survives reboots, power loss, and code updates.
-- **Automatic WiFi reconnect**: Bot checks connection every 30 seconds and recovers if dropped.
-- **Power management**: Battery voltage is monitored via ADC and voltage divider; bot automatically switches power modes to protect battery and maximize runtime.
-- **Hardware Abstraction Layer (HAL)**: All hardware (LED, sensors, motors) is accessed via clean interfaces for easy hardware swaps and maintainability.
-- **Web dashboard**: Live stats, controls, and JSON API at `http://ember-bot-N.local/`.
-- **Serial commands**: For diagnostics, genome management, and manual control.
+The codebase has been completely refactored from a single `.ino` file into a robust, modular, and scalable PlatformIO project. This professional structure was essential for managing the complexity of movement, networking, and state management.
 
-### Project Structure (2025)
+### Key Features Now Implemented
+
+- **🏃‍♂️ Mobile Platform:** Bots now move, actively seeking light to replenish energy using their motors.
+- **🧠 Simple Behaviors:** The core logic for `decideBehavior()` and `executeBehavior()` is in place, enabling phototaxis (seeking light) and basic obstacle avoidance.
+- **🌐 Advanced Web Dashboard:** A rich, auto-refreshing web interface provides real-time monitoring and control (mutate, reset, save genome) for each bot.
+- **🏗️ Mature Codebase:**
+  - **Hardware Abstraction Layer (HAL):** All hardware is cleanly separated, making the code easy to maintain and adapt.
+  - **Modular Structure:** Logic is split into `main.cpp`, `hal.cpp`, and `web_server.cpp`, managed with headers in the `include/` directory.
+  - **Professional Build System:** The project is now fully managed by PlatformIO, supporting different environments for USB and OTA uploads.
+- **📡 Robust Networking:**
+  - **OTA Updates:** Firmware can be updated wirelessly.
+  - **Persistent Genome:** Genetic traits are saved to flash memory and survive reboots.
+  - **WiFi Auto-Reconnect:** Bots are resilient to network dropouts.
+- **🔋 Power Management:** A 5-level power management system monitors battery voltage and adjusts performance to maximize runtime and protect the hardware.
+
+### Emergence We Can Now Observe
+
+- **Resource Seeking:** Bots with effective turning logic will find light sources faster and survive longer.
+- **Exploration vs. Exploitation:** The trade-off between moving to find light (costing energy) and staying still to conserve it becomes a key survival factor.
+- **Spatial Competition:** Multiple bots competing for a single light source will physically jostle for position, creating emergent territorial behavior.
+
+---
+
+## What's Next: The Path to v0.3
+
+With the v0.2 foundation firmly in place, the next steps focus on running experiments and expanding the bot's sensory capabilities.
+
+1. **Run Mobile Evolution Experiments:**
+    - Use the updated `EMBER_EVOLUTION_GUIDE.md` to run experiments where movement is a factor.
+    - Evolve new genetic traits related to movement strategy (e.g., `turn_sensitivity`, `exploration_rate`).
+    - Analyze how mobility affects the fitness landscape and the speed of evolution.
+
+2. **Refine Behavior and Genome:**
+    - Expand the `Genome` struct to include genes that control movement behavior.
+    - Refine the `decideBehavior()` logic to create more nuanced actions based on these new genes.
+
+3. **Begin v0.3 - Multi-Sensory Life:**
+    - **Goal:** Add new resource types (e.g., sound, temperature) to demonstrate metabolic diversity.
+    - **Hardware:** Integrate new sensors like microphones or thermistors into the HAL.
+    - **Software:** Expand the `updateLife()` function to account for energy gain from multiple resource types.
+    - **Emergence:** Evolve "specialist" bots that are highly efficient at harvesting one resource versus "generalist" bots that can use many.
+
+---
+
+## Current Project Structure
 
 ```
 EMBER/
-├── include/              # Header files (.h) for configuration and HAL
-│   ├── config.h
-│   ├── credentials_user.h
-│   ├── genome.h
-│   ├── hal.h
-│   ├── globals.h         # Global state and types
-│   ├── web_server.h      # Web server function prototypes
-│   └── ...
+├── include/              # Header files (.h)
+│   ├── config.h          # Core constants (energy, behavior)
+│   ├── credentials_user.h  # User's WiFi credentials (ignored by Git)
+│   ├── genome.h          # Genome struct definition
+│   ├── globals.h         # Global variables and type definitions
+│   ├── hal.h             # Hardware Abstraction Layer interface
+│   └── web_server.h      # Web server function prototypes
 ├── src/                  # Source files (.cpp)
-│   ├── hal.cpp
-│   ├── main.cpp          # Main application logic
-│   ├── web_server.cpp    # Web server handlers and setup
-├── lib/                  # Libraries (managed by PlatformIO)
-├── docs/                 # Project documentation (Manifest, Roadmap, Guides)
+│   ├── hal.cpp           # HAL implementation
+│   ├── main.cpp          # Main application logic (setup, loop, life)
+│   └── web_server.cpp    # Web server handlers
+├── docs/                 # Project documentation
 ├── tools/                # Python scripts for experiments
-└── platformio.ini        # Project configuration
+└── platformio.ini        # PlatformIO project configuration
 ```
 
 ### How to Build and Upload
 
-- **First upload via USB**: Use `pio run -e esp32-usb -t upload`.
-- **Subsequent uploads via OTA**: Use `pio run -e esp32-ota -t upload --upload-port <IP_ADDRESS>`.
+### How to Build and Upload
+
+- **Configure WiFi:** Copy `include/credentials_template.h` to `include/credentials_user.h` and fill in your network details.
+
+- **First upload via USB:**
+
+    ```sh
+    pio run -e esp32-usb -t upload
+    ```
+
+- **Subsequent uploads via OTA:**
+
+    ```sh
+    pio run -e esp32-ota -t upload --upload-port <BOT_IP_ADDRESS>
+    ```
+
 - **Configure WiFi and bot ID** in your main firmware file before first upload.
 
 ### How to Monitor and Control
 
-- **Web dashboard**: Live stats, genome, battery, and controls (mutate, reset, save) at `http://ember-bot-N.local/`.
-- **JSON API**: Real-time telemetry at `/api/stats` endpoint.
-- **Serial monitor**: Diagnostic output and manual commands.
+- **Web dashboard:** Live stats, genome, battery, and controls (mutate, reset, save) at `http://ember-bot-N.local/`.
+- **JSON API:** Real-time telemetry at `/api/stats` endpoint.
+- **Serial monitor:** Diagnostic output and manual commands.
 
 ### Evolution Experiments
 
@@ -94,7 +141,7 @@ See the [Build Guide](docs/EMBER_BUILD_GUIDE.md#power-management-system-battery-
 
 This version adds powerful new features while keeping the core life pattern unchanged:
 
-- **🌐 Web Dashboard** - Monitor bots at `http://ember-bot-0.local/` with live stats
+- **Web Dashboard** - Monitor bots at `http://ember-bot-0.local/` with live stats
 - **📡 OTA Updates** - Upload code wirelessly (no USB after first flash)
 - **💾 Persistent Storage** - Genome survives reboots and power loss
 - **🔄 Auto-Reconnect** - WiFi resilience with automatic recovery
@@ -123,40 +170,32 @@ Watch it live. Watch it die. Watch evolution happen in real-time.
 
 ### If You Just Want to See It Work
 
-1. **Configure WiFi & Bot ID** in `ember_v0.1_hal_ota.ino`:
+1. **Configure WiFi** in `include/credentials_user.h`.
 
-```cpp
-   const char* WIFI_SSID = "YourNetwork";      // Your WiFi network name
-   const char* WIFI_PASSWORD = "YourPassword";   // Your WiFi password
-   const char* OTA_HOSTNAME = "ember-bot-0";   // UNIQUE for each bot!
-   // ...
-   genome.bot_id = 0; // UNIQUE for each bot!
-```
+2. **Flash the code** to your ESP32 using the PlatformIO "Upload" task for the `esp32-usb` environment.
 
-1. **Flash the code** to ESP32 (change `bot_id` to unique number 0-8)
+3. **Connect battery** and power on
 
-2. **Connect battery** and power on
-
-3. **Watch LED sequence**:
-   - White flash 3× = Boot complete
-   - Blue pulse = Connecting to WiFi
-   - Blue flash 3× = WiFi connected
+4. **Watch LED sequence**:
+   - Yellow = Booting
+   - Blue = Connecting to WiFi
+   - Green flash = WiFi connected
    - Then: Green (thriving) / Red (dying) / Off (dead)
 
-4. **Access web dashboard** (if WiFi connected):
+5. **Access web dashboard** (if WiFi connected):
    - Browser: `http://ember-bot-0.local/`
    - Auto-refreshes every 2 seconds with live stats
 
-5. **Or use Serial Monitor** (115200 baud):
+6. **Or use the Serial Monitor** (115200 baud):
 
-```txt
-   Light: 0.512 | Energy: 73.2 | Alive: 342s | Status: ALIVE | IP: 192.168.1.50
+```
+   Light: 0.453 | Energy: 88.1 | Batt: 98.7% (8.3V) | Dist: 45.1cm | Alive: 123s | Status: ALIVE
 ```
 
 ### If You Want to Build One
 
-1. **Read the BUILD_GUIDE.md** - complete assembly instructions
-2. **Read the SPEC.md** - technical specifications and pin assignments
+1. **Read `docs/EMBER_BUILD_GUIDE.md`** - complete assembly instructions
+2. **Read `docs/EMBER_v0.1_SPEC.md`** - technical specifications and pin assignments
 3. **Gather parts** - ~$30 in components per bot
 4. **Assemble** - 3-4 hours for first bot
 5. **Flash code** - Arduino IDE with ESP32 support
@@ -165,7 +204,7 @@ Watch it live. Watch it die. Watch evolution happen in real-time.
 ### If You Want to Run Evolution
 
 1. **Build 9 bots** (population size for meaningful selection)
-2. **Read EVOLUTION_GUIDE.md** - how to run experiments
+2. **Read `docs/EMBER_EVOLUTION_GUIDE.md`** - how to run experiments
 3. **Create arena** - controlled environment with light source
 4. **Run experiment** - place bots, measure survival times
 5. **Select winners** - copy genes from longest-surviving bots
@@ -182,7 +221,7 @@ Access your bot's dashboard via browser at: `http://ember-bot-N.local/`
 
 **Dashboard displays:**
 
-- 🔴🟢⚫ Live LED indicator (pulses with actual bot state)
+- 🟢🔴⚫ Live LED indicator (pulses with actual bot state)
 - 📊 Life status (alive/dead, energy bar, survival time, uptime)
 - 🌞 Environment (all light sensor readings)
 - 🧬 Genome (complete genetic code)
@@ -203,7 +242,7 @@ Access your bot's dashboard via browser at: `http://ember-bot-N.local/`
 
 1. Make code changes
 2. Arduino IDE → Tools → Port → **Network Ports** → ember-bot-0
-3. Click Upload
+3. In PlatformIO, run the OTA upload task: `pio run -e esp32-ota -t upload --upload-port <IP>`
 4. Watch LED turn purple (updating)
 5. Green flash 5× = success!
 
@@ -236,12 +275,12 @@ Access your bot's dashboard via browser at: `http://ember-bot-N.local/`
 
 ### WiFi Configuration
 
-**Edit at top of `ember_v0.1_hal_ota.ino` before first upload:**
+**Create and edit `include/credentials_user.h` before first upload:**
 
 ```cpp
-const char* WIFI_SSID = "YourNetworkName";   // Your WiFi network name
+const char* WIFI_SSID = "YourNetworkName";   // Your 2.4GHz WiFi network name
 const char* WIFI_PASSWORD = "YourPassword";    // Your WiFi password
-const char* OTA_HOSTNAME = "ember-bot-0";   // Unique for each bot (0-8)
+const char* OTA_HOSTNAME = "ember-bot-0";   // Unique hostname for each bot
 const char* OTA_PASSWORD = "ember2025";      // OTA update security
 ```
 
@@ -260,14 +299,17 @@ const char* OTA_PASSWORD = "ember2025";      // OTA update security
   "alive": true,
   "energy": 73.45,
   "light_level": 0.512,
-  "light_left": 0.498,
-  "light_right": 0.526,
+  "light_left": 0.498, // New in v0.2
+  "light_right": 0.526, // New in v0.2
+  "distance_cm": 25.3, // New in v0.2
   "threshold": 0.347,
   "efficiency": 1.123,
   "alive_time": 342,
   "uptime": 450,
   "wifi_rssi": -67,
-  "free_heap": 234567
+  "free_heap": 234567,
+  "battery_v": 8.1,
+  "battery_pct": 95.5
 }
 ```
 
@@ -301,30 +343,6 @@ while True:
 
 ---
 
-## Project Structure
-
-```
-EMBER/
-├── include/              # Header files (.h) for configuration and HAL
-│   ├── config.h
-│   ├── credentials_user.h
-│   ├── genome.h
-│   ├── hal.h
-│   ├── globals.h         # Global state and types
-│   ├── web_server.h      # Web server function prototypes
-│   └── ...
-├── src/                  # Source files (.cpp)
-│   ├── hal.cpp
-│   ├── main.cpp          # Main application logic
-│   ├── web_server.cpp    # Web server handlers and setup
-├── lib/                  # Libraries (managed by PlatformIO)
-├── docs/                 # Project documentation (Manifest, Roadmap, Guides)
-├── tools/                # Python scripts for experiments
-└── platformio.ini        # Project configuration
-```
-
----
-
 ## What Makes EMBER Different?
 
 ### 1. It's Real, Not Simulated
@@ -353,7 +371,7 @@ EMBER uses the **smallest possible rule set** that produces emergence:
 - One sensor type (light)
 - Two genes (threshold, efficiency)
 - Three states (thriving, dying, dead)
-- Four behaviors emerge (seek light, avoid darkness, compete for resources, adapt to environment)
+- Behaviors emerge (seek light, avoid obstacles, compete for resources)
 
 Nothing is pre-programmed except the capacity to sense, the cost of existence, and the rule for energy gain.
 
@@ -510,15 +528,13 @@ Different environments produce different optimal genomes:
 
 ### Full Mobile Build (v0.2+)
 
-Add to above:
+This is now the standard build.
 
 - TT motors (2) - $4
 - H-bridge motor driver - $3
 - HC-SR04 ultrasonic - $2
 - Wheels, chassis - $8
-- **Total per bot: ~$42**
-
-**v0.1 doesn't need motors** (stationary version to prove concept).
+- **Total per bot: ~$35-40**
 
 ---
 
@@ -540,12 +556,11 @@ This project uses **PlatformIO** with Visual Studio Code for a more robust devel
 1. **Open Project:** In VS Code, go to `File > Open Folder...` and select the root `EMBER` directory.
 2. **First Upload (USB):**
     - Connect the ESP32 via USB.
-    - Click the **PlatformIO icon** in the VS Code activity bar (ant head).
-    - Under "Project Tasks", find your environment (`esp32dev`) and click **"Upload"**.
+    - Use the PlatformIO "Upload" task for the `esp32-usb` environment.
 3. **Wireless Upload (OTA):**
     - After the first USB flash, you can upload wirelessly.
     - Find the bot's IP address from the Serial Monitor.
-    - In the PlatformIO CLI terminal, run: `pio run -t upload --upload-port <IP_ADDRESS>`
+    - In the PlatformIO CLI terminal, run: `pio run -e esp32-ota -t upload --upload-port <IP_ADDRESS>`
     - Example: `pio run -t upload --upload-port 192.168.1.50`
 
 All libraries are included with ESP32 core:
@@ -566,7 +581,7 @@ Interact with your bot via **Serial Monitor** or **Web Interface**:
 
 ### Genome Commands
 
-```txt
+```
 genome          → Display current genetic code
 mutate          → Apply random mutation (±10%) and save to flash
 randomize       → Generate new random genome and save
@@ -577,8 +592,7 @@ id X            → Set bot_id (0-8)
 
 ### Life Commands
 
-```txt
-stats           → Show energy, light, alive time, IP address
+```
 reset           → Reset energy to 100 (keep genome)
 ```
 
@@ -610,7 +624,7 @@ help            → Show all commands
 
 ### Example Session
 
-```txt
+```
 > genome
 =================================
 Bot ID: 3
@@ -648,13 +662,13 @@ Genome saved to flash!
 
 | LED Color | Pattern | Meaning | Energy | Context |
 |-----------|---------|---------|--------|---------|
-| ⚪ White | 3 flashes | Boot | 100 | System initialized |
-| 🔵 Blue | Slow pulse | Connecting | - | WiFi connecting |
-| 🔵 Blue | 3 flashes | Connected | - | WiFi successful |
-| 🟡 Yellow | 3 flashes | No WiFi | - | WiFi failed (offline mode) |
+| 🟡 Yellow | Solid | Booting | - | System initializing |
+| 🔵 Blue | Solid | Connecting | - | WiFi connecting |
+| 🟢 Green | Solid | Connected | - | WiFi successful |
+| 🟡 Yellow | Flashing | Low Battery | < 25% | Power saving warning |
 | 🟡 Yellow | 1 flash | Reconnecting | - | WiFi reconnect attempt |
 | 🟣 Purple | Pulse | OTA Update | - | Uploading new code |
-| 🟢 Green | 5 flashes | OTA Success | - | Upload complete |
+| 🟢 Green | Flashing | OTA Success | - | Upload complete |
 | 🔴 Red | 10 flashes | OTA Failed | - | Upload error |
 | 🟢 Green | Solid bright | Thriving | 80-100 | Gaining energy fast |
 | 🟢 Green | Solid dim | Healthy | 50-79 | Gaining energy slowly |
@@ -712,11 +726,9 @@ Genome saved to flash!
 
 **Fix:**
 
-```txt
->calibrate please ensure LDRs are wired correctly:
-threshold 0.3
-reset
-```
+1. Use the `sensors` serial command to check readings.
+2. Ensure LDRs are wired correctly.
+3. Use the web interface to lower the `light_threshold` and click "Reset Life".
 
 Or use web interface: Set threshold lower, click "Reset Life"
 
@@ -736,7 +748,7 @@ Or use web interface: Set threshold lower, click "Reset Life"
 
 **Fix:**
 
-1. Verify circuit: 3.3V → LDR → GPIO34/35 → 10kΩ → GND
+1. Verify circuit: 3.3V → LDR → GPIO34/35 → 10kΩ → GND.
 2. Serial command: `sensors` to check raw values
 3. Measure voltage at GPIO (should be 0-3.3V)
 
@@ -808,7 +820,7 @@ See the JSON API section above for a Python monitoring example.
 
 ### Q: Why can't it move in v0.1?
 
-**A:** Movement adds complexity. v0.1 focuses on proving the minimal pattern: sense → energy → survival. Movement comes in v0.2 once the basic pattern is validated. The motors are wired and ready (just disabled in code).
+**A:** It can! This is v0.2. The motors are enabled and the bot will actively seek light and avoid obstacles.
 
 ### Q: How is this different from a light-seeking robot?
 
@@ -1053,15 +1065,15 @@ When you watch an EMBER bot die in shadow and thrive in light, you're watching t
 ### Documentation
 
 - `EMBER_MANIFEST.md` - Philosophy and core concepts
-- `EMBER_v0.1_SPEC.md` - Technical specifications
+- `docs/EMBER_v0.1_SPEC.md` - Technical specifications (for historical reference)
 - `EMBER_BUILD_GUIDE.md` - Assembly instructions
 - `EMBER_EVOLUTION_GUIDE.md` - How to run experiments
 - `EMBER_ROADMAP.md` - Future versions
 
 ### Code
 
-- `ember_v0.1_hal_ota.ino` - Main firmware (this version)
-- `/tools/` - Helper scripts for logging, analysis, monitoring
+- `src/main.cpp` - Main firmware for the current version.
+- `tools/` - Helper scripts for logging, analysis, monitoring
 
 ### Hardware
 
@@ -1141,17 +1153,30 @@ From simple rules. In silicon and photons.
 
 ---
 
-**Ready?**
+## Ready to Build?
+
+
 
 1. Configure WiFi (or skip for offline mode)
+
 2. Flash the code
+
 3. Connect the battery
+
 4. Open `http://ember-bot-0.local/`
+
 5. Place it in light
+
+
 
 **Watch what emerges.**
 
----
 
-*EMBER v0.1 HAL+OTA Edition - Life From Light*  
-*Created by James Dearing @ Giblets Creations*
+
+
+
+*EMBER v0.2 Mobile Life Edition*  
+
+*Create
+
+*Created by James Gilbert @ Giblets Creations
