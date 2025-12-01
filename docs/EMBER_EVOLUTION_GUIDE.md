@@ -1,6 +1,6 @@
 # EMBER v0.2 Evolution Guide
 
-**Running Natural Selection Experiments with Networked Artificial Life**
+## Running Natural Selection Experiments with Networked Artificial Life
 
 ---
 
