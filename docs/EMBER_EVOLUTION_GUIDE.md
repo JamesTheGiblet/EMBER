@@ -1,4 +1,4 @@
-# EMBER v0.1 Evolution Guide
+# EMBER v0.2 Evolution Guide
 
 **Running Natural Selection Experiments with Networked Artificial Life**
 
@@ -14,6 +14,7 @@ This guide teaches you how to run evolution experiments with EMBER bots. You'll 
 4. How to track lineages across generations
 5. How to use network features for efficient experiments
 6. How to analyze results and understand emergence
+7. How movement (v0.2) changes the experiment
 
 **By the end, you'll watch artificial life adapt to your specific environment through natural selection.**
 
@@ -30,6 +31,7 @@ Before starting evolution experiments, ensure:
 ✓ WiFi is configured (optional but highly recommended)
 ✓ Web dashboards are accessible (test each bot)
 ✓ Genomes save/load correctly (test with reboot)
+✓ Motors and ultrasonic sensor are working
 ✓ You have a controlled environment (arena with light source)
 ✓ You have a way to log data (notebook, spreadsheet, or API script)
 ```

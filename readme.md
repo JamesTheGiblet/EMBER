@@ -1,5 +1,67 @@
 # EMBER v0.1 - Life From Light
 
+## Latest Codebase Updates (2025)
+
+### Modular Architecture & Refactoring
+
+- **Web server logic** is now fully modular: all HTTP handlers and setup are in `src/web_server.cpp`, with prototypes in `include/web_server.h`.
+- **Global state and configuration** (life state, battery, timers, etc.) are managed via `include/globals.h` for clean cross-file access.
+- **No duplicate definitions**: Only prototypes are included in headers, and all implementations are in `.cpp` files.
+- **Build system** uses PlatformIO for both USB and OTA uploads (`platformio.ini`).
+
+### Firmware Features
+
+- **Robust OTA update support**: Upload new firmware wirelessly after first USB flash.
+- **Persistent genome storage**: Genome is saved to ESP32 flash and survives reboots, power loss, and code updates.
+- **Automatic WiFi reconnect**: Bot checks connection every 30 seconds and recovers if dropped.
+- **Power management**: Battery voltage is monitored via ADC and voltage divider; bot automatically switches power modes to protect battery and maximize runtime.
+- **Hardware Abstraction Layer (HAL)**: All hardware (LED, sensors, motors) is accessed via clean interfaces for easy hardware swaps and maintainability.
+- **Web dashboard**: Live stats, controls, and JSON API at `http://ember-bot-N.local/`.
+- **Serial commands**: For diagnostics, genome management, and manual control.
+
+### Project Structure (2025)
+
+```
+EMBER/
+├── include/              # Header files (.h) for configuration and HAL
+│   ├── config.h
+│   ├── credentials_user.h
+│   ├── genome.h
+│   ├── hal.h
+│   ├── globals.h         # Global state and types
+│   ├── web_server.h      # Web server function prototypes
+│   └── ...
+├── src/                  # Source files (.cpp)
+│   ├── hal.cpp
+│   ├── main.cpp          # Main application logic
+│   ├── web_server.cpp    # Web server handlers and setup
+├── lib/                  # Libraries (managed by PlatformIO)
+├── docs/                 # Project documentation (Manifest, Roadmap, Guides)
+├── tools/                # Python scripts for experiments
+└── platformio.ini        # Project configuration
+```
+
+### How to Build and Upload
+
+- **First upload via USB**: Use `pio run -e esp32-usb -t upload`.
+- **Subsequent uploads via OTA**: Use `pio run -e esp32-ota -t upload --upload-port <IP_ADDRESS>`.
+- **Configure WiFi and bot ID** in your main firmware file before first upload.
+
+### How to Monitor and Control
+
+- **Web dashboard**: Live stats, genome, battery, and controls (mutate, reset, save) at `http://ember-bot-N.local/`.
+- **JSON API**: Real-time telemetry at `/api/stats` endpoint.
+- **Serial monitor**: Diagnostic output and manual commands.
+
+### Evolution Experiments
+
+- Build 9 bots, each with a unique hostname and bot ID.
+- Use the web dashboard and JSON API to track fitness and survival.
+- Mutate and breed genomes via web or serial commands.
+- All changes persist across reboots and code updates.
+
+---
+
 ## Power Management System
 
 EMBER v0.1 includes a battery monitoring and power management system:
@@ -241,33 +303,24 @@ while True:
 
 ## Project Structure
 
-```txt
-/ember/
-├── README.md                      ← You are here
-├── ember_v0.1_hal_ota.ino         ← Main code (HAL+OTA edition)
-│
-├── /docs/
-│   ├── EMBER_MANIFEST.md          ← Philosophy: what EMBER is and why
-│   ├── EMBER_v0.1_SPEC.md         ← Technical spec: pins, circuits, behavior
-│   ├── EMBER_BUILD_GUIDE.md       ← Assembly: how to build the hardware
-│   ├── EMBER_EVOLUTION_GUIDE.md   ← Experiments: how to run evolution
-│   └── EMBER_ROADMAP.md           ← Future: v0.2, v0.3, v0.4...
-│
-├── /hardware/
-│   ├── circuit_diagram.png        ← Wiring schematic
-│   ├── EMBER_PARTS_LIST.md              ← Shopping list with links
-│   └── /photos/
-│
-├── /experiments/
-│   ├── log_template.md            ← Template for recording results
-│   └── /results/
-│
-└── /tools/
-    ├── serial_logger.py           ← Auto-log fitness data
-    ├── genome_analyzer.py         ← Analyze which genes win
-    ├── swarm_monitor.py           ← Monitor all bots via API
-    ├── evolution_experiment.py    ← Full experiment automation
-    └── README.md                  ← Tool usage instructions
+```
+EMBER/
+├── include/              # Header files (.h) for configuration and HAL
+│   ├── config.h
+│   ├── credentials_user.h
+│   ├── genome.h
+│   ├── hal.h
+│   ├── globals.h         # Global state and types
+│   ├── web_server.h      # Web server function prototypes
+│   └── ...
+├── src/                  # Source files (.cpp)
+│   ├── hal.cpp
+│   ├── main.cpp          # Main application logic
+│   ├── web_server.cpp    # Web server handlers and setup
+├── lib/                  # Libraries (managed by PlatformIO)
+├── docs/                 # Project documentation (Manifest, Roadmap, Guides)
+├── tools/                # Python scripts for experiments
+└── platformio.ini        # Project configuration
 ```
 
 ---
@@ -1101,4 +1154,4 @@ From simple rules. In silicon and photons.
 ---
 
 *EMBER v0.1 HAL+OTA Edition - Life From Light*  
-*Create
+*Created by James Dearing @ Giblets Creations*

@@ -20,6 +20,7 @@
 #include "hal.h"
 #include "genome.h"
 #include "credentials_user.h"
+#include "globals.h"
 
 using namespace HAL;
 
@@ -29,60 +30,25 @@ using namespace HAL;
 
 Genome genome;           // The bot's genetic code
 Preferences preferences; // For saving/loading the genome
+WebServer server(80);    // Web server instance
 
 // ============================================================================
 // LIFE STATE
 // ============================================================================
 
-float energy = 100.0f;            // Current energy level (0-100)
-float light_level = 0.0f;         // Last read ambient light level (0.0-1.0)
-unsigned long alive_time_ms = 0;  // How long the bot has been alive
-unsigned long boot_time_ms = 0;   // Timestamp for when setup() finishes
-bool is_alive = true;             // The primary state: living or dead
+float energy = 100.0f;
+float light_level = 0.0f;
+unsigned long alive_time_ms = 0;
+unsigned long boot_time_ms = 0;
+bool is_alive = true;
+BehaviorState_t currentBehavior = IDLE;
+BatteryMonitor_t battery;
 
 // Timers for managing non-blocking updates
 unsigned long last_life_update_ms = 0;
 unsigned long last_stats_print_ms = 0;
-
-// ============================================================================
-// BEHAVIOR STATE
-// ============================================================================
-
-typedef enum {
-    IDLE,           // Conserving energy, not moving
-    SEEKING_LIGHT,  // Actively moving towards a light source
-    AVOIDING_OBSTACLE // Performing an avoidance maneuver
-} BehaviorState_t;
-
-BehaviorState_t currentBehavior = IDLE;
-
-// ============================================================================
-// POWER MANAGEMENT
-// ============================================================================
-
-typedef enum {
-    POWER_NORMAL = 0,
-    POWER_ECONOMY,
-    POWER_LOW,
-    POWER_CRITICAL,
-    POWER_SHUTDOWN,
-    POWER_USB_DEBUG // Special mode for when powered via USB, which interferes with readings
-} PowerMode_t;
-
-typedef struct {
-    float voltage;
-    float percentage;
-    PowerMode_t mode;
-    uint32_t lastUpdate;
-} BatteryMonitor_t;
-
-BatteryMonitor_t battery;
-
-// ============================================================================
-// WEB SERVER
-// ============================================================================
-
-WebServer server(80);
+unsigned long last_wifi_check_ms = 0;
+const unsigned long WIFI_CHECK_INTERVAL_MS = 30000; // 30 seconds interval for WiFi check
 
 float readBatteryVoltage() {
     int adcValue = analogRead(Pins::BATTERY_SENSE);
@@ -119,6 +85,17 @@ void updateBatteryStatus() {
     battery.lastUpdate = millis();
 }
 
+// ============================================================================
+// FORWARD DECLARATIONS
+// ============================================================================
+void updateLife(float dt);
+void handleSerialCommands();
+void decideBehavior();
+void executeBehavior();
+void setupWebServer();
+void updateBatteryStatus();
+void checkWiFiConnection();
+void showState();
 // WIFI & OTA SETUP
 /**
  * @brief Connects the ESP32 to the configured WiFi network.
@@ -145,6 +122,28 @@ void setupWiFi() {
     Serial.print("[WiFi] Hostname: http://");
     Serial.print(OTA_HOSTNAME);
     Serial.println(".local");
+}
+
+/**
+ * @brief Periodically checks the WiFi connection and attempts to reconnect if lost.
+ *
+ * This function is non-blocking. It initiates a reconnect and allows the main
+ * loop to continue running.
+ */
+void checkWiFiConnection() {
+    // Only check periodically
+    if (millis() - last_wifi_check_ms < WIFI_CHECK_INTERVAL_MS) {
+        return;
+    }
+    last_wifi_check_ms = millis();
+
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("[WiFi] Connection lost. Attempting to reconnect...");
+        led.yellow(50); // Give a brief visual cue
+        WiFi.reconnect();
+        delay(100); // Allow LED to flash
+        showState(); // Restore normal LED state
+    }
 }
 
 
@@ -268,15 +267,6 @@ void loadGenome() {
     preferences.end();
     Serial.printf("[Genome] ID: %d, Gen: %d, Threshold: %.2f, Efficiency: %.2f\n", genome.bot_id, genome.generation, genome.light_threshold, genome.efficiency);
 }
-
-// Forward declarations for functions used in the main loop
-void updateLife(float dt);
-void handleSerialCommands();
-void decideBehavior();
-void executeBehavior();
-void setupWebServer();
-void updateBatteryStatus();
-void showState();
 
 // ============================================================================
 // SETUP
@@ -458,6 +448,8 @@ void executeBehavior() {
 void loop() {
     ArduinoOTA.handle(); // Always handle network requests
     server.handleClient(); // Handle incoming web requests
+
+    checkWiFiConnection();
     handleSerialCommands(); // Check for user input
     
     // Calculate delta time (time since last loop)
@@ -545,107 +537,23 @@ void handleSerialCommands() {
 // WEB SERVER IMPLEMENTATION
 // ============================================================================
 
-void handleRoot() {
-    char buffer[4096]; // A buffer to build the HTML page
-    char temp[200];
+// HTML/CSS for the web interface. Using raw literals makes it easy to write.
+const char* HTML_HEADER = R"rawliteral(
+<!DOCTYPE html><html><head><title>EMBER Bot %d</title><meta http-equiv="refresh" content="2"><style>
+body{font-family:monospace;background:#282c34;color:#abb2bf;padding:1em;}
+.container{max-width:800px;margin:auto;}h1{color:#61afef;text-align:center;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:1em;}
+.box{background:#323842;padding:1em;border-radius:8px;}
+h2{color:#98c379;border-bottom:1px solid #444;padding-bottom:0.5em;margin-top:0;}
+p{display:flex;justify-content:space-between;margin:0.5em 0;} span{color:#e5c07b;font-weight:bold;}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:0.5em;}
+.actions a{display:block;padding:0.8em;background:#61afef;color:#fff;text-decoration:none;text-align:center;border-radius:5px;}
+.actions a.danger{background:#e06c75;}
+</style></head><body><div class="container"><h1>&#128293; EMBER Bot %d</h1>
+)rawliteral";
 
-    // Header
-    snprintf(buffer, sizeof(buffer),
-        "<!DOCTYPE html><html><head><title>EMBER Bot %d</title>"
-        "<meta http-equiv='refresh' content='2'>"
-        "<style>"
-        "body{font-family:monospace;background:#282c34;color:#abb2bf;padding:1em;}"
-        ".container{max-width:800px;margin:auto;}"
-        "h1{color:#61afef;text-align:center;}"
-        ".grid{display:grid;grid-template-columns:1fr 1fr;gap:1em;}"
-        ".box{background:#323842;padding:1em;border-radius:8px;}"
-        "h2{color:#98c379;border-bottom:1px solid #444;padding-bottom:0.5em;margin-bottom:0.5em;}"
-        "p{display:flex;justify-content:space-between;margin:0.5em 0;} span{color:#e5c07b;}"
-        ".actions a{display:block;padding:0.8em;margin:0.5em 0;background:#61afef;color:#fff;text-decoration:none;text-align:center;border-radius:5px;}"
-        "</style></head><body><div class='container'><h1>&#128293; EMBER Bot %d</h1>",
-        genome.bot_id, genome.bot_id);
+const char* HTML_FOOTER = R"rawliteral(
+</div></body></html>
+)rawliteral";
 
-    // Main Grid
-    strcat(buffer, "<div class='grid'>");
-
-    // --- Life Status Box ---
-    strcat(buffer, "<div class='box'><h2>Life Status</h2>");
-    snprintf(temp, sizeof(temp), "<p>Status: <span>%s</span></p>", is_alive ? "ALIVE" : "DEAD"); strcat(buffer, temp);
-    snprintf(temp, sizeof(temp), "<p>Energy: <span>%.1f%%</span></p>", energy); strcat(buffer, temp);
-    snprintf(temp, sizeof(temp), "<p>Alive Time: <span>%lu s</span></p>", alive_time_ms / 1000); strcat(buffer, temp);
-    strcat(buffer, "</div>");
-
-    // --- Environment Box ---
-    strcat(buffer, "<div class='box'><h2>Environment</h2>");
-    snprintf(temp, sizeof(temp), "<p>Light Level: <span>%.3f</span></p>", light_level); strcat(buffer, temp);
-    snprintf(temp, sizeof(temp), "<p>Distance: <span>%.1f cm</span></p>", ultrasonic.readDistance()); strcat(buffer, temp);
-    strcat(buffer, "</div>");
-
-    // --- Genome Box ---
-    strcat(buffer, "<div class='box'><h2>Genome</h2>");
-    snprintf(temp, sizeof(temp), "<p>Generation: <span>%u</span></p>", genome.generation); strcat(buffer, temp);
-    snprintf(temp, sizeof(temp), "<p>Light Threshold: <span>%.3f</span></p>", genome.light_threshold); strcat(buffer, temp);
-    snprintf(temp, sizeof(temp), "<p>Efficiency: <span>%.3f</span></p>", genome.efficiency); strcat(buffer, temp);
-    strcat(buffer, "</div>");
-
-    // --- Power Box ---
-    strcat(buffer, "<div class='box'><h2>Power</h2>");
-    if (battery.mode == POWER_USB_DEBUG) {
-        snprintf(temp, sizeof(temp), "<p>Status: <span>DEBUGGING</span></p><p>Voltage: <span>%.1fV</span></p>", battery.voltage);
-    } else {
-        snprintf(temp, sizeof(temp), "<p>Percentage: <span>%.1f%%</span></p><p>Voltage: <span>%.1fV</span></p>", battery.percentage, battery.voltage);
-    }
-    strcat(buffer, temp);
-    strcat(buffer, "</div>");
-
-    strcat(buffer, "</div>"); // End Grid
-
-    // --- Actions Box ---
-    strcat(buffer, "<div class='box actions'><h2>Controls</h2>");
-    strcat(buffer, "<a href='/reset'>Reset Life</a>");
-    strcat(buffer, "<a href='/api/stats' target='_blank'>JSON API</a>");
-    strcat(buffer, "</div>");
-
-    // Footer
-    strcat(buffer, "</div></body></html>");
-
-    server.send(200, "text/html", buffer);
-}
-
-void handleAPIStats() {
-    char buffer[512];
-    snprintf(buffer, sizeof(buffer),
-        "{\"bot_id\":%d,\"generation\":%u,\"alive\":%s,\"energy\":%.1f,"
-        "\"light_level\":%.3f,\"light_left\":%.3f,\"light_right\":%.3f,"
-        "\"distance_cm\":%.1f,\"battery_v\":%.2f,\"battery_pct\":%.1f,"
-        "\"power_mode\":%d,\"alive_time_s\":%lu}",
-        genome.bot_id, genome.generation, is_alive ? "true" : "false", energy,
-        light_level, lightSensor.readLeft(), lightSensor.readRight(),
-        ultrasonic.readDistance(), battery.voltage, battery.percentage,
-        battery.mode, alive_time_ms / 1000);
-
-    server.send(200, "application/json", buffer);
-}
-
-void handleReset() {
-    energy = 100.0f;
-    is_alive = true;
-    boot_time_ms = millis();
-    Serial.println("[Web] Life has been reset via web.");
-    server.sendHeader("Location", "/");
-    server.send(303);
-}
-
-void handleNotFound() {
-    server.send(404, "text/plain", "Not Found");
-}
-
-void setupWebServer() {
-    server.on("/", HTTP_GET, handleRoot);
-    server.on("/api/stats", HTTP_GET, handleAPIStats);
-    server.on("/reset", HTTP_GET, handleReset);
-    server.onNotFound(handleNotFound);
-
-    server.begin();
-    Serial.println("[Web] Server started.");
-}
+#include "web_server.h"

@@ -15,6 +15,7 @@ struct Genome {
 
 // --- Global Instances ---
 
+#include <Preferences.h>
 // Declare a global genome instance. It will be defined and managed in main.cpp.
 extern Genome genome;
 

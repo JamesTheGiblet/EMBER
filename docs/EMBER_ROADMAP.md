@@ -46,9 +46,9 @@ Each version is the **minimum viable complexity** to demonstrate the target emer
 
 | Version | Status | Focus | Key Feature | Emergence Demonstrated |
 |---------|--------|-------|-------------|----------------------|
-| **v0.1** | ✅ Released | Stationary life | Light sensing, HAL+OTA | Genome selection |
-| **v0.2** | 🔄 In Design | Mobile life | Movement + phototaxis | Resource seeking |
-| **v0.3** | 📋 Planned | Multi-sensory | Multiple resources | Metabolic diversity |
+| **v0.1** | ✅ Superseded | Stationary life | Light sensing, HAL+OTA | Genome selection |
+| **v0.2** | ✅ Released | Mobile life | Movement + phototaxis | Resource seeking |
+| **v0.3** | 🔄 In Design | Multi-sensory | Multiple resources | Metabolic diversity |
 | **v0.4** | 📋 Planned | Communicating | ESP-NOW mesh | Swarm intelligence |
 | **v0.5** | 📋 Planned | Specialized | Role variants | Division of labor |
 | **v0.6+** | 💭 Conceptual | Reproduction | Self-replication | True artificial life |
@@ -116,14 +116,14 @@ Build time: 2-3 hours
 
 ---
 
-## v0.2 - Mobile Life 🔄 IN DESIGN
+## v0.2 - Mobile Life ✅ RELEASED
 
 **Goal:** Add movement to enable active resource seeking
 
 ### New Features
 
 - **Enable motors** (already wired, currently disabled)
-- **Phototaxis:** Move toward light sources
+- **Phototaxis:** Move toward light sources based on simple, hardcoded logic.
 - **Collision avoidance:** Use ultrasonic sensor
 - **Genome expansion:**
 
@@ -133,10 +133,10 @@ Build time: 2-3 hours
       float light_threshold;
       float efficiency;
       
-      // v0.2 NEW genes
-      float movement_threshold;    // How low before seeking light
-      float turn_sensitivity;      // How much to turn based on L/R difference
-      float exploration_rate;      // Random movement when energy high
+      // v0.2 Genes (Future Work)
+      // float movement_threshold;    // How low before seeking light
+      // float turn_sensitivity;      // How much to turn based on L/R difference
+      // float exploration_rate;      // Random movement when energy high
       
       uint8_t bot_id;
       uint32_t generation;
@@ -146,7 +146,7 @@ Build time: 2-3 hours
 - **Enhanced fitness:**
 
 ```cpp
-  fitness = (survival_time × 0.7) + (distance_traveled × 0.3);
+  fitness = survival_time; // Distance can be added later
 ```
 
 - **Movement patterns emerge** from genome, not programmed
