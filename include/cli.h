@@ -1,10 +1,8 @@
-/*
- * cli.h - Command Line Interface for EMBER
- */
+#ifndef CLI_H
+#define CLI_H
 
-#pragma once
+#include "hal.h"
 
-#include <Arduino.h>
+void processSerialCommands(HAL& hal);
 
-// Public function to handle serial commands
-void handleSerialCommands();
+#endif // CLI_H

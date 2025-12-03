@@ -27,5 +27,13 @@ namespace Pins {
     // -- Power Management --
     constexpr int BATTERY_SENSE = 32; // ADC pin for battery voltage
 
+    // -- Motor Driver (supports both L9110S and TB6612FNG) --
+    constexpr int MOTOR_A_IN1 = 15; // Left Motor IN1
+    constexpr int MOTOR_A_IN2 = 16;  // Left Motor IN2
+    constexpr int MOTOR_B_IN1 = 17; // Right Motor IN1
+    constexpr int MOTOR_B_IN2 = 18; // Right Motor IN2
+    constexpr int MOTOR_A_EN  = 5;  // Left Motor Speed (PWM - for TB6612FNG)
+    constexpr int MOTOR_B_EN  = 4;  // Right Motor Speed (PWM - for TB6612FNG)
+    constexpr int MOTOR_STBY  = 13; // Standby pin for TB6612FNG
 
 } // namespace Pins

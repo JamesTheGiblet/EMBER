@@ -1,513 +1,394 @@
-/*
- * EMBER - Step 1: OTA Firmware
- *
- * This is the foundational sketch for the EMBER bot. Its sole purpose
- * is to connect to WiFi and enable Over-the-Air (OTA) updates.
- *
- * This allows for wireless code deployment, which is essential for
- * developing the bot without needing a physical USB connection for every change.
- */
-
 #include <Arduino.h>
-#include <WiFi.h>
-#include <ESPmDNS.h>
-#include <ArduinoOTA.h>
-#include <WebServer.h>
-#include <Preferences.h> // For saving data to flash (EEPROM replacement)
-#include "pins.h"
-
-// Include Hardware Abstraction Layer, Genome definition, and credentials
 #include "hal.h"
-#include "genome.h"
-#include "credentials_user.h"
-#include "globals.h"
-#include "avoidance.h"
-#include "seeking.h"
-#include "cli.h"
+#include "config.h"
+#include "movement.h"
+#include "status.h"
 
-using namespace HAL;
-
-// ============================================================================
-// GLOBAL INSTANCES
-// ============================================================================
-
-Genome genome;           // The bot's genetic code
-Preferences preferences; // For saving/loading the genome
-WebServer server(80);    // Web server instance
+HAL hal;
+MotorConfig motorConfig;
+Movement movement(hal, motorConfig);
+StatusLED status(hal);
 
 // ============================================================================
-// LIFE STATE
+// TEST SEQUENCES
 // ============================================================================
 
-float energy = 100.0f;
-float light_level = 0.0f;
-unsigned long alive_time_ms = 0;
-unsigned long boot_time_ms = 0;
-bool is_alive = true;
-bool manual_override = true; // Start in manual mode, waiting for a 'go' command.
-BehaviorState_t currentBehavior = IDLE;
-
-LifeParams_t life_params;
-BatteryMonitor_t battery;
-
-// Timers for managing non-blocking updates
-unsigned long last_life_update_ms = 0;
-unsigned long last_stats_print_ms = 0;
-unsigned long last_wifi_check_ms = 0;
-const unsigned long WIFI_CHECK_INTERVAL_MS = 30000; // 30 seconds interval for WiFi check
-
-float readBatteryVoltage() {
-    int adcValue = analogRead(Pins::BATTERY_SENSE);
-    float v = ((float)adcValue / 4095.0f) * 3.3f; // Using constants directly for clarity
-    return v / 0.3333f; // Apply voltage divider formula
-}
-
-float batteryToPercent(float voltage) {
-    // 2S LiPo: 8.4V (100%) to 6.4V (0%)
-    float percent = (voltage - 6.4f) / (8.4f - 6.4f) * 100.0f;
-    return constrain(percent, 0.0f, 100.0f);
-}
-
-PowerMode_t getPowerMode(float voltage) {
-    if (voltage >= 7.8f) return POWER_NORMAL;
-    if (voltage >= 7.2f) return POWER_ECONOMY;
-    if (voltage >= 6.8f) return POWER_LOW;
-    if (voltage >= 6.4f) return POWER_CRITICAL;
-    return POWER_SHUTDOWN;
-}
-
-void updateBatteryStatus() {
-    battery.voltage = readBatteryVoltage();
-    battery.percentage = batteryToPercent(battery.voltage);
-
-    // Check for unrealistic voltage, which indicates USB power is connected
-    if (battery.voltage > 9.0f) {
-        battery.mode = POWER_USB_DEBUG;
-        battery.percentage = 101.0f; // Use a special value to indicate USB power
-        return;
-    }
-
-    battery.mode = getPowerMode(battery.voltage);
-    battery.lastUpdate = millis();
-}
-
-// ============================================================================
-// FORWARD DECLARATIONS
-// ============================================================================
-void updateLife(float dt);
-void decideBehavior();
-void executeBehavior();
-void setupWebServer();
-void updateBatteryStatus();
-void checkWiFiConnection();
-void showState();
-// WIFI & OTA SETUP
-/**
- * @brief Connects the ESP32 to the configured WiFi network.
- *
- * Retries connection until successful. Provides serial feedback.
- */
-void setupWiFi() {
-    led.blue(50); // Dim blue to indicate WiFi setup is starting
-    Serial.println("\n[WiFi] Connecting to " + String(WIFI_SSID));
-    WiFi.mode(WIFI_STA);
-    WiFi.setHostname(OTA_HOSTNAME);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-    // Wait for connection
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
-    }
-
-    led.green(150); // Bright green for success
-    Serial.println("\n[WiFi] Connected successfully!");
-    Serial.print("[WiFi] IP Address: ");
-    Serial.println(WiFi.localIP());
-    Serial.print("[WiFi] Hostname: http://");
-    Serial.print(OTA_HOSTNAME);
-    Serial.println(".local");
-}
-
-/**
- * @brief Periodically checks the WiFi connection and attempts to reconnect if lost.
- *
- * This function is non-blocking. It initiates a reconnect and allows the main
- * loop to continue running.
- */
-void checkWiFiConnection() {
-    // Only check periodically
-    if (millis() - last_wifi_check_ms < WIFI_CHECK_INTERVAL_MS) {
-        return;
-    }
-    last_wifi_check_ms = millis();
-
-    if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("[WiFi] Connection lost. Attempting to reconnect...");
-        led.yellow(50); // Give a brief visual cue
-        WiFi.reconnect();
-        delay(100); // Allow LED to flash
-        showState(); // Restore normal LED state
-    }
-}
-
-
-
-/**
- * @brief Configures and starts the ArduinoOTA service.
- *
- * Sets up handlers to provide feedback during the update process.
- */
-void setupOTA() {
-    // --- Configure OTA ---
-    ArduinoOTA.setHostname(OTA_HOSTNAME);
-    ArduinoOTA.setPassword(OTA_PASSWORD);
-
-    // --- OTA Event Handlers ---
-    ArduinoOTA.onStart([]() {
-        String type;
-        if (ArduinoOTA.getCommand() == U_FLASH) {
-            HAL::led.magenta(200); // Magenta indicates an OTA update is in progress
-            type = "sketch";
-        } else { // U_SPIFFS
-            type = "filesystem";
-        }
-        Serial.println("[OTA] Start updating " + type);
-    });
-
-    ArduinoOTA.onEnd([]() {
-        Serial.println("\n[OTA] Update Complete!");
-        // Green flash 5x for success
-        for (int i = 0; i < 5; i++) { 
-            HAL::led.green(255);
-            delay(100);
-            HAL::led.off();
-            delay(100);
-        }
-    });
-
-    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-        Serial.printf("[OTA] Progress: %u%%\r", (progress / (total / 100)));
-        // Pulse magenta to show progress
-        // Brightness cycles up and down
-        int brightness = (millis() / 5) % 512;
-        if (brightness > 255) brightness = 511 - brightness;
-        HAL::led.setRGB(brightness, 0, brightness);
-    });
-
-    ArduinoOTA.onError([](ota_error_t error) {
-        // Red flash 10x for error
-        for (int i = 0; i < 10; i++) {
-            HAL::led.red(255);
-            delay(50);
-            HAL::led.off();
-            delay(50);
-        }
-        Serial.printf("[OTA] Error[%u]: ", error);
-        if (error == OTA_AUTH_ERROR) Serial.println("Authentication Failed");
-        else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-        else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-        else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-        else if (error == OTA_END_ERROR) Serial.println("End Failed");
-    });
-
-    // --- Start OTA Service ---
-    ArduinoOTA.begin();
-    Serial.println("[OTA] Service ready.");
-}
-
-/**
- * @brief Configures and starts the mDNS responder.
- *
- * This allows you to connect to the device using its hostname (e.g., "ember-bot-1.local")
- * instead of its IP address.
- */
-void setupMDNS() {
-    if (!MDNS.begin(OTA_HOSTNAME)) {
-        Serial.println("[mDNS] Error setting up mDNS responder!");
-        return;
-    }
-    Serial.println("[mDNS] Responder started.");
-    // Announce the OTA service over mDNS
-    MDNS.addService("arduino", "tcp", 3232);
-}
-
-// ============================================================================
-// PERSISTENT STORAGE (EEPROM)
-// ============================================================================
-
-/**
- * @brief Saves the current genome to non-volatile flash storage.
- */
-void saveGenome() {
-    preferences.begin("ember-genome", false); // Open in read-write mode
-    preferences.putBytes("genome", &genome, sizeof(genome));
-    preferences.end();
-    Serial.println("[Storage] Genome saved to flash.");
-}
-
-/**
- * @brief Loads the genome from flash storage. If no genome is found,
- *        it initializes with a random one.
- */
-void loadGenome() {
-    preferences.begin("ember-genome", true); // Open in read-only mode
+void runTestSequence() {
+    Serial.println("\n→ Starting basic test sequence...");
     
-    if (preferences.isKey("genome")) {
-        preferences.getBytes("genome", &genome, sizeof(genome));
-        Serial.println("[Storage] Genome loaded from flash.");
-    } else {
-        Serial.println("[Storage] No saved genome found. Generating a random one.");
-        // Seed the random number generator from an unused analog pin
-        randomSeed(analogRead(A0)); 
+    status.setStatus(StatusLED::MOVING);
+    
+    Serial.println("  Forward...");
+    movement.forward(motorConfig.baseSpeed);
+    delay(1500);
+    
+    Serial.println("  Backward...");
+    movement.backward(motorConfig.baseSpeed);
+    delay(1500);
+    
+    Serial.println("  Turn Left...");
+    movement.turnLeft(motorConfig.baseSpeed);
+    delay(motorConfig.turnDuration);
+    
+    Serial.println("  Turn Right...");
+    movement.turnRight(motorConfig.baseSpeed);
+    delay(motorConfig.turnDuration);
+    
+    Serial.println("  Spin CW...");
+    movement.spinCW(motorConfig.baseSpeed);
+    delay(1000);
+    
+    Serial.println("  Spin CCW...");
+    movement.spinCCW(motorConfig.baseSpeed);
+    delay(1000);
+    
+    Serial.println("  Crawl...");
+    movement.crawl();
+    delay(1500);
+    
+    Serial.println("  Run...");
+    movement.run();
+    delay(1500);
+    
+    movement.stop();
+    status.setStatus(StatusLED::READY);
+    Serial.println("✓ Test sequence complete\n");
+}
 
-        genome.light_threshold = 0.3f; // A more forgiving initial threshold
-        genome.efficiency = 0.75f + (random(0, 100) / 100.0f); // Random efficiency 0.75 to 1.75
-        genome.turn_sensitivity = 200 + random(0, 600); // Random sensitivity from 200 to 800
-        genome.base_speed = 150 + random(0, 100); // Random base speed from 150 to 250
-        genome.bot_id = 0; // Default to 0, should be set uniquely
-        genome.generation = 0;
-        
-        // Immediately save the new random genome
-        saveGenome();
+void runSmoothTestSequence() {
+    Serial.println("\n→ Starting smooth movement test...");
+    
+    status.setStatus(StatusLED::MOVING);
+    
+    Serial.println("  Gentle acceleration from stop...");
+    movement.smoothForward(motorConfig.crawlSpeed);
+    delay(1500);
+    
+    Serial.println("  Ramping to full speed...");
+    movement.smoothForward(motorConfig.maxSpeed);
+    delay(2000);
+    
+    Serial.println("  Gentle deceleration to stop...");
+    movement.smoothStop();
+    delay(500);
+    
+    Serial.println("  Smooth backward start...");
+    movement.smoothBackward(motorConfig.baseSpeed);
+    delay(1500);
+    
+    Serial.println("  Smooth stop from backward...");
+    movement.smoothStop();
+    delay(500);
+    
+    Serial.println("  Testing direction change...");
+    movement.smoothForward(motorConfig.baseSpeed);
+    delay(1000);
+    Serial.println("    (Stopping first...)");
+    movement.smoothStop();
+    delay(200);
+    Serial.println("    (Now backward...)");
+    movement.smoothBackward(motorConfig.baseSpeed);
+    delay(1000);
+    movement.smoothStop();
+    
+    status.setStatus(StatusLED::READY);
+    Serial.println("✓ Smooth test complete\n");
+}
+
+void runRGBTest() {
+    Serial.println("\n→ Testing RGB LED...");
+    
+    Serial.println("  Red...");
+    status.setStatus(StatusLED::ERROR);
+    delay(1000);
+    
+    Serial.println("  Green...");
+    status.setStatus(StatusLED::READY);
+    delay(1000);
+    
+    Serial.println("  Blue...");
+    status.setStatus(StatusLED::MOVING);
+    delay(1000);
+    
+    Serial.println("  Yellow...");
+    status.setStatus(StatusLED::OBSTACLE);
+    delay(1000);
+    
+    Serial.println("  Cyan...");
+    status.setStatus(StatusLED::SEARCHING);
+    delay(1000);
+    
+    Serial.println("  Purple...");
+    status.setStatus(StatusLED::CALIBRATING);
+    delay(1000);
+    
+    Serial.println("  Blinking (error)...");
+    status.setStatus(StatusLED::ERROR);
+    delay(3000);
+    
+    Serial.println("  Blinking (OTA)...");
+    status.setStatus(StatusLED::OTA_UPDATE);
+    delay(3000);
+    
+    status.setStatus(StatusLED::READY);
+    Serial.println("✓ RGB test complete\n");
+}
+
+void printHelp() {
+    Serial.println("\n╔════════════════════════════════════════╗");
+    Serial.println("║          EMBER COMMAND HELP           ║");
+    Serial.println("╚════════════════════════════════════════╝");
+    Serial.println();
+    Serial.println("Basic Movement:");
+    Serial.println("  f/F - Forward       b/B - Backward");
+    Serial.println("  l/L - Turn Left     r/R - Turn Right");
+    Serial.println("  < - Spin CCW        > - Spin CW");
+    Serial.println("  c/C - Crawl (slow)  m/M - Run (fast)");
+    Serial.println("  s/S - Stop");
+    Serial.println();
+    Serial.println("Smooth Movement:");
+    Serial.println("  w/W - Smooth Forward");
+    Serial.println("  x/X - Smooth Backward");
+    Serial.println("  q/Q - Smooth Stop");
+    Serial.println();
+    Serial.println("Test Sequences:");
+    Serial.println("  t/T - Basic movement test");
+    Serial.println("  y/Y - Smooth movement test");
+    Serial.println("  g/G - RGB LED test");
+    Serial.println();
+    Serial.println("Information:");
+    Serial.println("  h/H - This help menu");
+    Serial.println("  i/I - Show system info");
+    Serial.println();
+}
+
+void printSystemInfo() {
+    Serial.println("\n╔════════════════════════════════════════╗");
+    Serial.println("║         EMBER SYSTEM INFO             ║");
+    Serial.println("╚════════════════════════════════════════╝");
+    Serial.println();
+    Serial.println("Hardware:");
+    Serial.printf("  Chip: %s\n", ESP.getChipModel());
+    Serial.printf("  Cores: %d\n", ESP.getChipCores());
+    Serial.printf("  CPU Freq: %d MHz\n", ESP.getCpuFreqMHz());
+    Serial.printf("  Flash: %d MB\n", ESP.getFlashChipSize() / 1048576);
+    Serial.printf("  Free Heap: %d KB\n", ESP.getFreeHeap() / 1024);
+    Serial.println();
+    Serial.println("Motor Configuration:");
+    Serial.printf("  Base Speed: %d\n", motorConfig.baseSpeed);
+    Serial.printf("  Crawl Speed: %d\n", motorConfig.crawlSpeed);
+    Serial.printf("  Max Speed: %d\n", motorConfig.maxSpeed);
+    Serial.printf("  Turn Duration: %d ms\n", motorConfig.turnDuration);
+    Serial.printf("  Motor A Inverted: %s\n", motorConfig.motorA_inverted ? "Yes" : "No");
+    Serial.printf("  Motor B Inverted: %s\n", motorConfig.motorB_inverted ? "Yes" : "No");
+    Serial.printf("  Motor A Trim: %+d\n", motorConfig.motorA_trim);
+    Serial.printf("  Motor B Trim: %+d\n", motorConfig.motorB_trim);
+    Serial.println();
+    Serial.println("Current State:");
+    Serial.printf("  Moving: %s\n", movement.isMoving() ? "Yes" : "No");
+    Serial.printf("  Speed: %d\n", movement.getCurrentSpeed());
+    Serial.printf("  Status LED: ");
+    switch(status.getCurrentStatus()) {
+        case StatusLED::OFF: Serial.println("Off"); break;
+        case StatusLED::BOOTING: Serial.println("Booting (Red)"); break;
+        case StatusLED::READY: Serial.println("Ready (Green)"); break;
+        case StatusLED::MOVING: Serial.println("Moving (Blue)"); break;
+        case StatusLED::OBSTACLE: Serial.println("Obstacle (Yellow)"); break;
+        case StatusLED::SEARCHING: Serial.println("Searching (Cyan)"); break;
+        case StatusLED::ERROR: Serial.println("Error (Red Blink)"); break;
+        case StatusLED::CALIBRATING: Serial.println("Calibrating (Purple)"); break;
+        case StatusLED::OTA_UPDATE: Serial.println("OTA Update (White Blink)"); break;
     }
-    preferences.end();
-    Serial.printf("[Genome] ID: %d, Gen: %d, Threshold: %.2f, Efficiency: %.2f\n", genome.bot_id, genome.generation, genome.light_threshold, genome.efficiency);
+    Serial.println();
 }
 
 // ============================================================================
 // SETUP
 // ============================================================================
+
 void setup() {
     Serial.begin(115200);
-    Serial.println("\n\n--- EMBER OTA Firmware Booting ---");
-
-    // Initialize hardware from the HAL
-    lightSensor.begin();
-    ultrasonic.begin();
-    led.begin();
-    led.yellow(50); // Dim yellow to indicate booting
-
-    // Initialize runtime life parameters from config constants
-    life_params.energy_decay = Config::Life::ENERGY_DECAY;
-    life_params.energy_gain = Config::Life::ENERGY_GAIN;
-    life_params.movement_cost_multiplier = Config::Life::MOVEMENT_COST_MULTIPLIER;
-
-    // Load the bot's identity and traits from "EEPROM"
-    loadGenome();
-
-    // Take the first reading to initialize the light_level variable
-    light_level = lightSensor.readAverage();
-
-    // Give the bot a starting chance based on its initial environment
-    updateLife(0.1f); // Simulate a small time-slice for the initial energy calculation
-
-    // Set boot timestamp after all initial setup
-    boot_time_ms = millis();
-
-    setupAvoidance();
-
-    setupWiFi();
-    setupMDNS();
-    setupOTA();
-
-    // Start the web server if WiFi is connected
-    if (WiFi.status() == WL_CONNECTED) {
-        setupWebServer();
-    }
-
-    updateBatteryStatus();
-
-    led.off(); // Turn LED off after setup is complete
-    Serial.println("\n--- Boot complete. Life cycle starting. ---");
-}
-
-// ============================================================================
-// LOOP
-// ============================================================================
-
-/**
- * @brief Updates the bot's energy based on light level and genome.
- */
-void updateLife(float dt) {
-    // Base existence cost
-    float energy_cost = life_params.energy_decay * dt;
+    delay(1000); // Give serial time to stabilize
     
-    // Movement adds additional cost
-    if (currentBehavior == SEEKING_LIGHT || currentBehavior == AVOIDING_OBSTACLE) {
-        energy_cost *= life_params.movement_cost_multiplier;
-    }
+    // Show we're booting
+    status.setStatus(StatusLED::BOOTING);
     
-    energy -= energy_cost;
+    Serial.println("\n\n");
+    Serial.println("╔════════════════════════════════════════╗");
+    Serial.println("║      EMBER v0.2 - Mobile Life         ║");
+    Serial.println("║       Phase 1: Motor Control          ║");
+    Serial.println("╚════════════════════════════════════════╝");
+    Serial.println();
     
-    // Energy gain from light (unchanged)
-    if (light_level > genome.light_threshold) {
-        float excess_light = light_level - genome.light_threshold;
-        energy += life_params.energy_gain * excess_light * genome.efficiency * dt;
-    }
-    
-    energy = constrain(energy, 0.0f, 100.0f);
-    
-    if (energy <= 0.0f) is_alive = false;
-    if (!is_alive && energy > 0.0f) {
-        is_alive = true;
-        boot_time_ms = millis();
-    }
-}
-
-/**
- * @brief Updates the RGB LED to reflect the bot's current state.
- */
-void showState() {
-    if (!is_alive) {
-        led.off(); // Dead
-        return;
-    }
-
-    // Override color for low power warning
-    if (battery.mode == POWER_LOW || battery.mode == POWER_CRITICAL) {
-        // Flash yellow to indicate low battery
-        bool led_on = (millis() % 1000) < 500;
-        led.yellow(led_on ? 200 : 0);
-        return;
-    }
-
-    if (light_level > genome.light_threshold) {
-        led.green(150); // Thriving
-    } else {
-        // Dying - flash red, faster as energy gets lower
-        int flash_period = 100 + (int)(energy * 9); // Period from 100ms to 1000ms
-        bool led_on = (millis() % flash_period) < (flash_period / 2);
-        if (led_on) {
-            led.red(200);
-        } else {
-            led.off();
+    if (!hal.init()) {
+        Serial.println("❌ HAL initialization FAILED!");
+        status.setStatus(StatusLED::ERROR);
+        while (true) { 
+            delay(1000); 
         }
     }
+    
+    Serial.println("✓ HAL initialized");
+    Serial.println("✓ PWM configured (Motors: 20kHz, RGB: 5kHz)");
+    Serial.println();
+    
+    Serial.println("Motor Configuration:");
+    Serial.printf("  Base Speed: %d\n", motorConfig.baseSpeed);
+    Serial.printf("  Crawl Speed: %d\n", motorConfig.crawlSpeed);
+    Serial.printf("  Max Speed: %d\n", motorConfig.maxSpeed);
+    Serial.printf("  Turn Duration: %d ms\n", motorConfig.turnDuration);
+    Serial.println();
+    
+    movement.stop();
+    status.setStatus(StatusLED::READY);
+    
+    Serial.println("✓ Robot Ready");
+    Serial.println();
+    Serial.println("Press 'h' for help, 't' for test sequence");
+    Serial.print("> ");
 }
 
-/**
- * @brief The "brain" of the bot. Decides what behavior to adopt.
- */
-void decideBehavior() {
-    // If manual override is active, don't change the behavior.
-    if (manual_override) {
-        return;
-    }
-
-    // --- Highest Priority: Obstacle Avoidance ---
-    if (checkObstacle()) {
-        currentBehavior = AVOIDING_OBSTACLE;
-        return;
-    }
-
-    // Power state overrides all other decisions.
-    if (battery.mode == POWER_CRITICAL || battery.mode == POWER_SHUTDOWN) {
-        currentBehavior = IDLE; // Must conserve power
-        return;
-    }
-
-    // The primary drive is survival. If energy is low, it must seek light.
-    if (energy < 99.0f) { // Start seeking light almost immediately
-        currentBehavior = SEEKING_LIGHT;
-    } 
-    // If energy is high, it can rest and conserve power.
-    else {
-        currentBehavior = IDLE;
-    }
-}
-
-/**
- * @brief Executes the current behavior by controlling the motors.
- */
-void executeBehavior() {
-    // Motor control removed; function intentionally left empty.
-}
+// ============================================================================
+// MAIN LOOP
+// ============================================================================
 
 void loop() {
-    // Handle OTA updates
-    ArduinoOTA.handle();
-    // Handle web server requests
-    server.handleClient();
-    // Handle serial commands
-    handleSerialCommands();
-    // Check WiFi connection periodically
-    checkWiFiConnection();
-
-    // Calculate delta time for physics-based updates
-    unsigned long now = millis();
-    float dt = (now - last_life_update_ms) / 1000.0f;
-    last_life_update_ms = now;
+    // Check for serial commands
+    if (Serial.available()) {
+        char cmd = Serial.read();
+        
+        // Clear buffer
+        while (Serial.available() && (Serial.peek() == '\n' || Serial.peek() == '\r')) {
+            Serial.read();
+        }
+        
+        switch (cmd) {
+            // ================================================================
+            // BASIC MOVEMENT
+            // ================================================================
+            case 'f': case 'F':
+                Serial.println("→ Forward");
+                status.setStatus(StatusLED::MOVING);
+                movement.forward(motorConfig.baseSpeed);
+                break;
+                
+            case 'b': case 'B':
+                Serial.println("← Backward");
+                status.setStatus(StatusLED::MOVING);
+                movement.backward(motorConfig.baseSpeed);
+                break;
+                
+            case 'l': case 'L':
+                Serial.println("↺ Turn Left");
+                status.setStatus(StatusLED::MOVING);
+                movement.turnLeft(motorConfig.baseSpeed);
+                delay(motorConfig.turnDuration);
+                movement.stop();
+                status.setStatus(StatusLED::READY);
+                Serial.println("  (Turn complete)");
+                break;
+                
+            case 'r': case 'R':
+                Serial.println("↻ Turn Right");
+                status.setStatus(StatusLED::MOVING);
+                movement.turnRight(motorConfig.baseSpeed);
+                delay(motorConfig.turnDuration);
+                movement.stop();
+                status.setStatus(StatusLED::READY);
+                Serial.println("  (Turn complete)");
+                break;
+                
+            case '<':
+                Serial.println("⟲ Spin CCW");
+                status.setStatus(StatusLED::MOVING);
+                movement.spinCCW(motorConfig.baseSpeed);
+                break;
+                
+            case '>':
+                Serial.println("⟳ Spin CW");
+                status.setStatus(StatusLED::MOVING);
+                movement.spinCW(motorConfig.baseSpeed);
+                break;
+                
+            case 'c': case 'C':
+                Serial.println("🐌 Crawl");
+                status.setStatus(StatusLED::MOVING);
+                movement.crawl();
+                break;
+                
+            case 'm': case 'M':
+                Serial.println("🏃 Run");
+                status.setStatus(StatusLED::MOVING);
+                movement.run();
+                break;
+                
+            case 's': case 'S':
+                Serial.println("⏹ Stop");
+                movement.stop();
+                status.setStatus(StatusLED::READY);
+                break;
+            
+            // ================================================================
+            // SMOOTH MOVEMENT
+            // ================================================================
+            case 'w': case 'W':
+                Serial.println("→ Smooth Forward");
+                status.setStatus(StatusLED::MOVING);
+                movement.smoothForward(motorConfig.baseSpeed);
+                break;
+                
+            case 'x': case 'X':
+                Serial.println("← Smooth Backward");
+                status.setStatus(StatusLED::MOVING);
+                movement.smoothBackward(motorConfig.baseSpeed);
+                break;
+                
+            case 'q': case 'Q':
+                Serial.println("⏹ Smooth Stop");
+                movement.smoothStop();
+                status.setStatus(StatusLED::READY);
+                break;
+            
+            // ================================================================
+            // TEST SEQUENCES
+            // ================================================================
+            case 't': case 'T':
+                runTestSequence();
+                break;
+                
+            case 'y': case 'Y':
+                runSmoothTestSequence();
+                break;
+                
+            case 'g': case 'G':
+                runRGBTest();
+                break;
+            
+            // ================================================================
+            // INFORMATION
+            // ================================================================
+            case 'h': case 'H':
+                printHelp();
+                break;
+                
+            case 'i': case 'I':
+                printSystemInfo();
+                break;
+            
+            // ================================================================
+            // UNKNOWN
+            // ================================================================
+            default:
+                Serial.println("❓ Unknown command. Press 'h' for help.");
+                break;
+        }
+        
+        // Print prompt
+        Serial.print("> ");
+    }
     
-    // Update the life state regardless of whether it's alive or dead.
-    // This allows a "dead" bot to potentially gain energy and resurrect.
-    updateLife(dt);
-
-    if (is_alive) {
-        // Decide what to do...
-        decideBehavior();
-        // executeBehavior() is called; motor control removed.
-        executeBehavior();
-    }
-
-    if (is_alive) {
-        alive_time_ms = millis() - boot_time_ms;
-    }
-
-    // Always update the LED to reflect the current state
-    showState();
-
-    if (manual_override && is_alive) {
-        // Special status message when waiting for the 'go' command.
-        if (millis() - last_stats_print_ms > 2000) { // Print less often in this state
-            Serial.println("--- Bot is ready. Send 'force auto' to begin autonomous behavior. ---");
-            last_stats_print_ms = millis();
-        }
-        // We don't return here, so that core functions like OTA still run.
-        // The decideBehavior() and executeBehavior() functions will handle the idle state.
-    }
-
-    // Print stats to serial every second
-    if (millis() - last_stats_print_ms > 1000) {
-        last_stats_print_ms = millis();
-
-        // Update battery status before printing
-        updateBatteryStatus();
-
-        // Build the battery status string
-        char battery_str[30];
-        if (battery.mode == POWER_USB_DEBUG) {
-            snprintf(battery_str, sizeof(battery_str), "DEBUGGING (%.1fV)", battery.voltage);
-        } else {
-            snprintf(battery_str, sizeof(battery_str), "%.1f%% (%.1fV)", battery.percentage, battery.voltage);
-        }
-
-        Serial.printf("Light: %.3f | Energy: %5.1f | Batt: %-18s | Dist: %4.1fcm | Alive: %lus | Status: %s\n",
-                      light_level, energy, battery_str, ultrasonic.readDistance(), alive_time_ms / 1000, is_alive ? "ALIVE" : "DEAD");
-    }
+    // Update status LED (for animations/blinking)
+    status.update();
+    
+    delay(10);
 }
-
-// ============================================================================
-// WEB SERVER IMPLEMENTATION
-// ============================================================================
-
-// HTML/CSS for the web interface. Using raw literals makes it easy to write.
-const char* HTML_HEADER = R"rawliteral(
-<!DOCTYPE html><html><head><title>EMBER Bot %d</title><meta http-equiv="refresh" content="2"><style>
-body{font-family:monospace;background:#282c34;color:#abb2bf;padding:1em;}
-.container{max-width:800px;margin:auto;}h1{color:#61afef;text-align:center;}
-.grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:1em;}
-.box{background:#323842;padding:1em;border-radius:8px;}
-h2{color:#98c379;border-bottom:1px solid #444;padding-bottom:0.5em;margin-top:0;}
-p{display:flex;justify-content:space-between;margin:0.5em 0;} span{color:#e5c07b;font-weight:bold;}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:0.5em;}
-.actions a{display:block;padding:0.8em;background:#61afef;color:#fff;text-decoration:none;text-align:center;border-radius:5px;}
-.actions a.danger{background:#e06c75;}
-</style></head><body><div class="container"><h1>&#128293; EMBER Bot %d</h1>
-)rawliteral";
-
-const char* HTML_FOOTER = R"rawliteral(
-</div></body></html>
-)rawliteral";
-
-#include "web_server.h"
