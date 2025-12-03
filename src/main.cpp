@@ -374,6 +374,17 @@ void loop() {
             case 'i': case 'I':
                 printSystemInfo();
                 break;
+
+            // ================================================================
+            // ULTRASONIC READING
+            // ================================================================                
+            case 'u': case 'U':
+                {
+            int dist = hal.readUltrasonic();
+            Serial.printf("Distance: %d cm\n", dist);
+                }
+                break;
+                
             
             // ================================================================
             // UNKNOWN

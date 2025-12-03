@@ -1,6 +1,7 @@
 # EMBER v0.2 - Mobile Artificial Life
 
 **Simple rule: Existence costs energy. Resources provide energy. Survive.**
+**A physical implementation of artificial life. Simple rule: Existence costs energy. Resources provide energy. Survive.**
 
 ---
 
@@ -160,6 +161,9 @@ A physical implementation of the fundamental equation that all life follows:
 energy -= EXISTENCE_COST;
 energy += detectResource() * EFFICIENCY;
 alive = (energy > 0);
+energy -= cost_of_living;
+energy += gain_from_resources;
+is_alive = (energy > 0);
 ```
 
 Watch it live. Watch it die. Watch evolution happen in real-time.
