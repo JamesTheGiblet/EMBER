@@ -143,11 +143,11 @@ This section provides the practical wiring connections for the components. For t
 
 | ESP32 Pin | L9110S Pin | Wire Color Suggestion |
 |-----------|--------------------|----------------------|
-| GPIO15 | A-1A (Motor A IN1) | Orange |
-| GPIO2 | A-1B (Motor A IN2) | Yellow |
-| GPIO16 | B-1A (Motor B IN1) | Green |
-| GPIO17 | B-1B (Motor B IN2) | Blue |
-| 7.4V Battery+ | VCC | Red (thick wire) |
+| GPIO15    | A-1A (Motor A IN1) | Orange               |
+| GPIO16    | A-1B (Motor A IN2) | Yellow               |
+| GPIO17    | B-1A (Motor B IN1) | Green                |
+| GPIO18    | B-1B (Motor B IN2) | Blue                 |
+| 7.4V Battery+ | VCC                | Red (thick wire)     |
 | GND | GND | Black (thick wire) |
 
 ### TB6612FNG Motor Driver Wiring
@@ -156,14 +156,14 @@ This section provides the practical wiring connections for the components. For t
 
 | ESP32 Pin | TB6612 Pin | Wire Color |
 |-----------|------------|------------|
-| GPIO15 | AIN1 | Orange |
-| GPIO2 | AIN2 | Yellow |
-| GPIO5 | PWMA | Red |
-| GPIO16 | BIN1 | Green |
-| GPIO17 | BIN2 | Blue |
-| GPIO4 | PWMB | Purple |
-| GPIO13 | STBY | White |
-| 3.3V | VCC | Red (thin) |
+| GPIO15    | AIN1       | Orange     |
+| GPIO16    | AIN2       | Yellow     |
+| GPIO5     | PWMA       | Red        |
+| GPIO17    | BIN1       | Green      |
+| GPIO18    | BIN2       | Blue       |
+| GPIO4     | PWMB       | Purple     |
+| GPIO13    | STBY       | White      |
+| 3.3V      | VCC        | Red (thin) |
 | 7.4V Battery+ | VM | Red (thick) |
 | GND | GND | Black |
 
@@ -361,8 +361,8 @@ C. **Test ESP32:**
 ```txt
 3.3V ──┬─── [LDR] ───┬─── [10kΩ] ─── GND
        │             │
-     (exposed)    TO ESP32
-                 (GPIO 34/21)
+     (exposed)    TO ESP32 ADC
+                 (GPIO 35/34)
 ```
 
 **Left LDR:**

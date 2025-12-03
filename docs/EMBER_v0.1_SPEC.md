@@ -307,9 +307,9 @@ namespace HAL::PWM {
 ```cpp
 namespace HAL::Pins {
     constexpr int MOTOR_A_IN1 = 15;   // GPIO15
-    constexpr int MOTOR_A_IN2 = 2;    // GPIO2
-    constexpr int MOTOR_B_IN1 = 16;   // GPIO16
-    constexpr int MOTOR_B_IN2 = 17;   // GPIO17
+    constexpr int MOTOR_A_IN2 = 16;   // GPIO16
+    constexpr int MOTOR_B_IN1 = 17;   // GPIO17
+    constexpr int MOTOR_B_IN2 = 18;   // GPIO18
     constexpr int MOTOR_A_EN = 5;     // GPIO5 (PWM or unused)
     constexpr int MOTOR_B_EN = 4;     // GPIO4 (PWM or unused)
     constexpr int MOTOR_STBY = 13;    // GPIO13 (standby or unused)
