@@ -1,5 +1,6 @@
 #include "hal.h"
 #include "pins.h"
+#include <algorithm> // For std::sort
 
 HAL::HAL() {}
 
@@ -134,28 +135,28 @@ long HAL::measurePulse() {
 }
 
 int HAL::readUltrasonic() {
-    // Take multiple readings and average (noise reduction)
-    long duration1 = measurePulse();
-    delayMicroseconds(100);
-    long duration2 = measurePulse();
-    delayMicroseconds(100);
-    long duration3 = measurePulse();
+    // Use a median filter to reject noise and get a stable reading.
+    const int numReadings = 5;
+    long readings[numReadings];
+
+    for (int i = 0; i < numReadings; ++i) {
+        readings[i] = measurePulse();
+        delay(20); // Small delay between pings to prevent interference
+    }
+
+    // Sort the readings to find the median
+    std::sort(readings, readings + numReadings);
+
+    // The median is the middle value
+    long medianDuration = readings[numReadings / 2];
     
-    // If any reading timed out, return max distance
-    if (duration1 == 0 || duration2 == 0 || duration3 == 0) {
+    // If the median is 0, it means most readings timed out
+    if (medianDuration == 0) {
         return US_MAX_DISTANCE;
     }
     
-    // Average the three readings
-    long avgDuration = (duration1 + duration2 + duration3) / 3;
+    int distance = medianDuration / 58;
     
-    // Convert to distance in cm
-    // Speed of sound = 343 m/s = 0.0343 cm/us
-    // Distance = (duration / 2) * 0.0343
-    // Simplified: distance = duration / 58.2
-    int distance = avgDuration / 58;
-    
-    // Constrain to valid range (2cm to 400cm for HC-SR04)
     return constrain(distance, 2, US_MAX_DISTANCE);
 }
 
@@ -167,11 +168,13 @@ float HAL::readBatteryVoltage() {
     // Read ADC value (0-4095 for 12-bit ADC)
     int adcValue = analogRead(Pins::BATTERY_SENSE);
     
-    // Convert to voltage
-    // ESP32 ADC reference is 3.3V, but you may have a voltage divider
-    // Adjust this formula based on your voltage divider ratio
-    // Example: if using 2:1 divider (10K + 10K resistors)
-    float voltage = (adcValue / 4095.0) * 3.3 * 2.0;
+    // This ratio is calculated by measuring the actual battery voltage with a
+    // multimeter and dividing it by the raw ADC value reported by the calibration
+    // sketch. This accounts for all hardware variations.
+    // Example: 7.65V / 2350 ADC = 0.003255
+    const float ADC_TO_VOLTAGE_RATIO = 0.00778; // Calibrated: 7.16V / 920 ADC
+    
+    float voltage = adcValue * ADC_TO_VOLTAGE_RATIO;
     
     return voltage;
 }

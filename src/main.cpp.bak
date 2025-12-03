@@ -483,9 +483,6 @@ void loop() {
     // Update status LED (for animations/blinking)
     status.update();
 
-    // Always update sensors so diagnostics are live
-    sensor.update();
-
     // Update autonomous mode
     autonomousMode.update();
     

@@ -1,5 +1,4 @@
-#ifndef HAL_H
-#define HAL_H
+#pragma once
 
 #include <Arduino.h>
 
@@ -47,5 +46,3 @@ private:
     // Helper for ultrasonic
     long measurePulse();
 };
-
-#endif
