@@ -27,6 +27,9 @@ public:
     void smoothForward(int speed = -1);
     void smoothBackward(int speed = -1);
     
+    // Proportional turning
+    void setVeer(int baseSpeed, int turnAmount);
+    
     // State queries
     bool isMoving();
     int getCurrentSpeed();

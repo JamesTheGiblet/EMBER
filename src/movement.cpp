@@ -181,6 +181,25 @@ void Movement::smoothBackward(int speed) {
 }
 
 // ============================================================================
+// PROPORTIONAL TURNING
+// ============================================================================
+
+void Movement::setVeer(int baseSpeed, int turnAmount) {
+    // This function allows for gentle, proportional turns (veering).
+    // A negative turnAmount veers left (slowing the right motor).
+    // A positive turnAmount veers right (slowing the left motor).
+    int speedA = baseSpeed;
+    int speedB = baseSpeed;
+
+    if (turnAmount > 0) { // Veer right
+        speedA -= turnAmount;
+    } else { // Veer left
+        speedB += turnAmount; // turnAmount is negative, so this is subtraction
+    }
+    setMotors(constrain(speedA, 0, 255), true, constrain(speedB, 0, 255), true);
+}
+
+// ============================================================================
 // STATE QUERIES
 // ============================================================================
 

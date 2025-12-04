@@ -1,5 +1,4 @@
 #include "behaviors.h"
-
 ObstacleAvoidance::ObstacleAvoidance(HAL& halRef, Movement& movRef, 
                                      UltrasonicSensor& sensRef, StatusLED& statRef,
                                      MotorConfig& cfg)
@@ -35,9 +34,6 @@ void ObstacleAvoidance::setState(State newState) {
 
 void ObstacleAvoidance::update() {
     if (!enabled) return;
-    
-    // Update sensor reading
-    sensor.update();
     
     // State machine
     switch (currentState) {
@@ -80,26 +76,48 @@ void ObstacleAvoidance::handleExploring() {
     //                   movement.getCurrentSpeed());
     //     lastDebug = millis();
     // }
-    
-    // Check for obstacles
-    if (distance < 20) {
+
+    // --- PRIORITY 0: OBSTACLE AVOIDANCE ---
+    // This is the highest priority behavior. If an obstacle is detected,
+    // we immediately change state and do not execute any lower-priority behaviors.
+    if (sensor.obstacleDetected()) {
         Serial.printf("🛑 Obstacle detected at %d cm\n", distance);
         setState(OBSTACLE_DETECTED);
         return;
     }
     
-    // Check for stuck condition (only when very close to something)
-    if (distance < 15 && sensor.isStuck()) {
+    // --- PRIORITY 0.5: STUCK DETECTION ---
+    // This is also a high-priority safety behavior.
+    if (sensor.isStuck()) {
         Serial.println("⚠ STUCK - can't get away from obstacle!");
         setState(STUCK_ESCAPE);
         return;
     }
     
-    // Adjust speed based on distance
-    if (distance < 40) {
-        movement.crawl();
+    // --- PRIORITY 1: PHOTOTROPISM (Light Seeking) ---
+    // This behavior only runs if no obstacles are detected.
+    int leftLDR = hal.readLDR_Left();
+    int rightLDR = hal.readLDR_Right();
+    int diff = leftLDR - rightLDR;
+    const int LDR_THRESHOLD = 200; // How much difference is significant
+
+    if (abs(diff) > LDR_THRESHOLD) {
+        // There is a significant light difference. Turn towards it.
+        int baseSpeed = config.baseSpeed;
+        // The more the difference, the sharper the turn.
+        int turnAmount = map(abs(diff), LDR_THRESHOLD, 4095, 20, baseSpeed);
+
+        // diff > 0 means left is brighter, so we pass a negative turn amount to veer left.
+        movement.setVeer(baseSpeed, -diff);
     } else {
-        movement.smoothForward(config.baseSpeed);
+        // --- PRIORITY 2: EXPLORATION ---
+        // No obstacles and no significant light source. Just explore.
+        // We can still use distance to modulate speed.
+        if (sensor.obstacleFar()) {
+            movement.crawl();
+        } else {
+            movement.smoothForward(config.baseSpeed);
+        }
     }
 }
 
