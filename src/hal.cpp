@@ -172,7 +172,7 @@ float HAL::readBatteryVoltage() {
     // multimeter and dividing it by the raw ADC value reported by the calibration
     // sketch. This accounts for all hardware variations.
     // Example: 7.65V / 2350 ADC = 0.003255
-    const float ADC_TO_VOLTAGE_RATIO = 0.00778; // Calibrated: 7.16V / 920 ADC
+    const float ADC_TO_VOLTAGE_RATIO = 0.001788; // Recalibrated: 7.32V / 4095 ADC
     
     float voltage = adcValue * ADC_TO_VOLTAGE_RATIO;
     

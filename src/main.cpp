@@ -16,7 +16,9 @@ MotorConfig motorConfig;
 Movement movement(hal, motorConfig);
 StatusLED status(hal);
 UltrasonicSensor sensor(hal);
+LDRSensor ldrSensor(hal);
 ObstacleAvoidance autonomousMode(hal, movement, sensor, status, motorConfig);
+Phototropism phototropismMode(hal, movement, status, ldrSensor);  // 
 
 // ============================================================================
 // TEST SEQUENCES
@@ -34,10 +36,6 @@ void runTestSequence() {
     Serial.println("  Backward...");
     movement.backward(motorConfig.baseSpeed);
     delay(1500);
-    
-    Serial.println("  Turn Left...");
-    movement.turnLeft(motorConfig.baseSpeed);
-    delay(motorConfig.turnDuration);
     
     Serial.println("  Turn Right...");
     movement.turnRight(motorConfig.baseSpeed);
@@ -150,7 +148,7 @@ void printHelp() {
     Serial.println();
     Serial.println("Basic Movement:");
     Serial.println("  f/F - Forward       b/B - Backward");
-    Serial.println("  l/L - Turn Left     r/R - Turn Right");
+    Serial.println("  r/R - Turn Right");
     Serial.println("  < - Spin CCW        > - Spin CW");
     Serial.println("  c/C - Crawl (slow)  m/M - Run (fast)");
     Serial.println();
@@ -174,11 +172,13 @@ void printHelp() {
     Serial.println();
     Serial.println("Sensors:");
     Serial.println("  u/U - Read ultrasonic");
+    Serial.println("  l/L - Read LDR sensors (light)");
     Serial.println("  p/P - Show sensor status (dist, stuck, batt)");
     Serial.println("  j/J - Show motor driver pin status");
     Serial.println();
     Serial.println("Autonomous:");
     Serial.println("  a/A - Toggle autonomous mode");
+    Serial.println("  k/K - Toggle phototropism mode (light seeking)"); 
 }
 
 void printSystemInfo() {
@@ -249,8 +249,8 @@ void setup() {
     
     Serial.println("\n\n");
     Serial.println("╔════════════════════════════════════════╗");
-    Serial.println("║      EMBER v0.2 - Mobile Life         ║");
-    Serial.println("║       Phase 1: Motor Control          ║");
+    Serial.println("║      EMBER v0.3 - Mobile Life         ║");
+    Serial.println("║     Phase 3B: Phototropism (Moth)     ║");
     Serial.println("╚════════════════════════════════════════╝");
     Serial.println();
     
@@ -278,7 +278,7 @@ void setup() {
     
     Serial.println("✓ Robot Ready");
     Serial.println();
-    Serial.println("Press 'h' for help, 't' for test sequence");
+    Serial.println("Press 'h' for help, 'l' to read LDR sensors");
     Serial.print("> ");
 }
 
@@ -310,16 +310,6 @@ void loop() {
                 Serial.println("← Backward");
                 status.setStatus(StatusLED::MOVING);
                 movement.backward(motorConfig.baseSpeed);
-                break;
-                
-            case 'l': case 'L':
-                Serial.println("↺ Turn Left");
-                status.setStatus(StatusLED::MOVING);
-                movement.turnLeft(motorConfig.baseSpeed);
-                delay(motorConfig.turnDuration);
-                movement.stop();
-                status.setStatus(StatusLED::READY);
-                Serial.println("  (Turn complete)");
                 break;
                 
             case 'r': case 'R':
@@ -419,8 +409,29 @@ void loop() {
             // ================================================================                
             case 'u': case 'U':
                 {
-            int dist = hal.readUltrasonic();
-            Serial.printf("Distance: %d cm\n", dist);
+                    int dist = hal.readUltrasonic();
+                    Serial.printf("Distance: %d cm\n", dist);
+                }
+                break;
+
+            // ================================================================
+            // LDR READING (Phase 3A)
+            // ================================================================
+            case 'l': case 'L':
+                {
+                    float leftBright = ldrSensor.getLeftBrightness();
+                    float rightBright = ldrSensor.getRightBrightness();
+                    Serial.println("--- LDR Sensors ---");
+                    Serial.printf("  Left:  %.3f (0=dark, 1=bright)\n", leftBright);
+                    Serial.printf("  Right: %.3f (0=dark, 1=bright)\n", rightBright);
+                    Serial.printf("  Difference: %.3f ", abs(leftBright - rightBright));
+                    if (leftBright > rightBright + 0.1f) {
+                        Serial.println("(LEFT brighter)");
+                    } else if (rightBright > leftBright + 0.1f) {
+                        Serial.println("(RIGHT brighter)");
+                    } else {
+                        Serial.println("(balanced)");
+                    }
                 }
                 break;
 
@@ -458,6 +469,17 @@ void loop() {
                 break;                
 
             // ================================================================
+            // PHOTOTROPISM MODE (Phase 3B)
+            // ================================================================
+            case 'k': case 'K':
+                if (phototropismMode.isEnabled()) {
+                    phototropismMode.disable();
+                } else {
+                    phototropismMode.enable();
+                }
+                break;
+                                
+            // ================================================================
             // EMERGENCY STOP
             // ================================================================
 
@@ -485,9 +507,12 @@ void loop() {
 
     // Always update sensors so diagnostics are live
     sensor.update();
+    ldrSensor.update();
 
     // Update autonomous mode
     autonomousMode.update();
+    // Update phototropism mode
+    phototropismMode.update();
     
     delay(5);
 }

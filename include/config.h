@@ -1,6 +1,5 @@
 #ifndef CONFIG_H
 #define CONFIG_H
-
 #include <Arduino.h>
 
 struct MotorConfig {
@@ -25,6 +24,15 @@ namespace StatusColors {
     const uint32_t ERROR     = 0xFF0000; // Red (blink)
     const uint32_t CALIBRATE = 0x8000FF; // Purple
     const uint32_t OTA       = 0xFFFFFF; // White (blink)
+}
+
+// LDR Sensor Calibration Values
+namespace ADC {
+    // The normalized ADC reading in darkness/light. Calibrated automatically.
+    constexpr float DARK_READING_LEFT   = 0.000f;
+    constexpr float LIGHT_READING_LEFT  = 1.000f;
+    constexpr float DARK_READING_RIGHT  = 0.000f;
+    constexpr float LIGHT_READING_RIGHT = 1.000f;
 }
 
 // Global instance

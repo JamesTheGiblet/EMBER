@@ -1,7 +1,7 @@
 #ifndef SENSORS_H
 #define SENSORS_H
-
 #include "hal.h"
+#include "config.h"  // NEW - for ADC calibration values
 
 class UltrasonicSensor {
 public:
@@ -40,6 +40,37 @@ private:
     unsigned long stuckStartTime = 0;
     
     int getMedianDistance();
+};
+
+// ============================================================================
+// LDR SENSOR CLASS (Phase 3A)
+// ============================================================================
+
+class LDRSensor {
+public:
+    LDRSensor(HAL& halRef);
+    
+    void update();                  // Call in loop - updates readings
+    float getLeftBrightness();      // Get filtered left brightness (0.0-1.0)
+    float getRightBrightness();     // Get filtered right brightness (0.0-1.0)
+    float getBrightnessDifference(); // Get L-R difference (positive = left brighter)
+    
+private:
+    HAL& hal;
+    
+    // Filtering (simple moving average)
+    static const int FILTER_SIZE = 5;
+    float leftReadings[FILTER_SIZE];
+    float rightReadings[FILTER_SIZE];
+    int readIndex = 0;
+    
+    // Filtered values
+    float leftBrightness = 0.0f;
+    float rightBrightness = 0.0f;
+    
+    // Helper functions
+    float getAverageBrightness(float readings[]);
+    float mapBrightness(float rawReading, float darkValue, float lightValue);
 };
 
 #endif
